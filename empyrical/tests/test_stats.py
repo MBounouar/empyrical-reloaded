@@ -1,17 +1,14 @@
 from copy import copy
 from operator import attrgetter
-from unittest import TestCase, SkipTest
 
 from parameterized import parameterized
+import unittest
 import numpy as np
-from numpy.testing import assert_almost_equal, assert_allclose
 import pandas as pd
 from pandas.core.generic import NDFrame
 from scipy import stats
 from functools import wraps
-
-from pandas.testing import assert_index_equal
-
+import pytest
 import empyrical
 import empyrical.utils as emutils
 from ..stats import (
@@ -26,7 +23,7 @@ DECIMAL_PLACES = 8
 rand = np.random.RandomState(1337)
 
 
-class BaseTestCase(TestCase):
+class BaseTestCase(unittest.TestCase):
     def assert_indexes_match(self, result, expected):
         """
         Assert that two pandas objects have the same indices.
@@ -35,12 +32,12 @@ class BaseTestCase(TestCase):
         to be a no-op in suites like TestStatsArrays that unwrap pandas objects
         into ndarrays.
         """
-        assert_index_equal(result.index, expected.index)
+        pd.testing.assert_index_equal(result.index, expected.index)
 
         if isinstance(result, pd.DataFrame) and isinstance(
             expected, pd.DataFrame
         ):
-            assert_index_equal(result.columns, expected.columns)
+            pd.testing.assert_index_equal(result.columns, expected.columns)
 
 
 class TestStats(BaseTestCase):
@@ -205,7 +202,7 @@ class TestStats(BaseTestCase):
     )
     def test_simple_returns(self, prices, expected):
         simple_returns = self.empyrical.simple_returns(prices)
-        assert_almost_equal(np.array(simple_returns), expected, 4)
+        np.testing.assert_almost_equal(np.array(simple_returns), expected, 4)
         self.assert_indexes_match(simple_returns, prices.iloc[1:])
 
     @parameterized.expand(
@@ -264,7 +261,7 @@ class TestStats(BaseTestCase):
             starting_value=starting_value,
         )
         for i in range(returns.size):
-            assert_almost_equal(cum_returns[i], expected[i], 4)
+            np.testing.assert_almost_equal(cum_returns[i], expected[i], 4)
 
         self.assert_indexes_match(cum_returns, returns)
 
@@ -282,7 +279,7 @@ class TestStats(BaseTestCase):
             returns,
             starting_value=starting_value,
         )
-        assert_almost_equal(cum_returns_final, expected, 4)
+        np.testing.assert_almost_equal(cum_returns_final, expected, 4)
 
     @parameterized.expand(
         [
@@ -315,7 +312,7 @@ class TestStats(BaseTestCase):
     def test_aggregate_returns(self, returns, convert_to, expected):
         returns = aggregate_returns(returns, convert_to).values.tolist()
         for i, v in enumerate(returns):
-            assert_almost_equal(v, expected[i], DECIMAL_PLACES)
+            np.testing.assert_almost_equal(v, expected[i], DECIMAL_PLACES)
 
     @parameterized.expand(
         [
@@ -340,7 +337,7 @@ class TestStats(BaseTestCase):
         ]
     )
     def test_max_drawdown(self, returns, expected):
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             self.empyrical.max_drawdown(returns),
             expected,
             DECIMAL_PLACES,
@@ -375,7 +372,7 @@ class TestStats(BaseTestCase):
         ]
     )
     def test_annual_ret(self, returns, period, expected):
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             self.empyrical.annual_return(returns, period=period),
             expected,
             DECIMAL_PLACES,
@@ -390,7 +387,7 @@ class TestStats(BaseTestCase):
         ]
     )
     def test_annual_volatility(self, returns, period, expected):
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             self.empyrical.annual_volatility(returns, period=period),
             expected,
             DECIMAL_PLACES,
@@ -406,7 +403,7 @@ class TestStats(BaseTestCase):
         ]
     )
     def test_calmar(self, returns, period, expected):
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             self.empyrical.calmar_ratio(returns, period=period),
             expected,
             DECIMAL_PLACES,
@@ -427,7 +424,7 @@ class TestStats(BaseTestCase):
         ]
     )
     def test_omega(self, returns, risk_free, required_return, expected):
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             self.empyrical.omega_ratio(
                 returns, risk_free=risk_free, required_return=required_return
             ),
@@ -464,7 +461,7 @@ class TestStats(BaseTestCase):
         ]
     )
     def test_sharpe_ratio(self, returns, risk_free, expected):
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             self.empyrical.sharpe_ratio(returns, risk_free=risk_free),
             expected,
             DECIMAL_PLACES,
@@ -485,8 +482,8 @@ class TestStats(BaseTestCase):
         sr_raised = self.empyrical.sharpe_ratio(
             returns + translation, required_return + translation
         )
-        assert_almost_equal(sr, sr_depressed, DECIMAL_PLACES)
-        assert_almost_equal(sr, sr_raised, DECIMAL_PLACES)
+        np.testing.assert_almost_equal(sr, sr_depressed, DECIMAL_PLACES)
+        np.testing.assert_almost_equal(sr, sr_raised, DECIMAL_PLACES)
 
     # Translating the returns and required returns by the different amount
     # yields different sharpe ratios
@@ -591,10 +588,12 @@ class TestStats(BaseTestCase):
             returns, required_return=required_return, period=period
         )
         if isinstance(downside_risk, float):
-            assert_almost_equal(downside_risk, expected, DECIMAL_PLACES)
+            np.testing.assert_almost_equal(
+                downside_risk, expected, DECIMAL_PLACES
+            )
         else:
             for i in range(downside_risk.size):
-                assert_almost_equal(
+                np.testing.assert_almost_equal(
                     downside_risk[i], expected[i], DECIMAL_PLACES
                 )
 
@@ -691,10 +690,12 @@ class TestStats(BaseTestCase):
             returns, required_return=required_return, period=period
         )
         if isinstance(sortino_ratio, float):
-            assert_almost_equal(sortino_ratio, expected, DECIMAL_PLACES)
+            np.testing.assert_almost_equal(
+                sortino_ratio, expected, DECIMAL_PLACES
+            )
         else:
             for i in range(sortino_ratio.size):
-                assert_almost_equal(
+                np.testing.assert_almost_equal(
                     sortino_ratio[i], expected[i], DECIMAL_PLACES
                 )
 
@@ -753,8 +754,8 @@ class TestStats(BaseTestCase):
         sr_raised = self.empyrical.sortino_ratio(
             returns + translation, required_return + translation
         )
-        assert_almost_equal(sr, sr_depressed, DECIMAL_PLACES)
-        assert_almost_equal(sr, sr_raised, DECIMAL_PLACES)
+        np.testing.assert_almost_equal(sr, sr_depressed, DECIMAL_PLACES)
+        np.testing.assert_almost_equal(sr, sr_raised, DECIMAL_PLACES)
 
     # Translating the returns and required returns by the same amount
     # should not change the sortino ratio.
@@ -791,7 +792,7 @@ class TestStats(BaseTestCase):
         ]
     )
     def test_excess_sharpe(self, returns, factor_returns, expected):
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             self.empyrical.excess_sharpe(returns, factor_returns),
             expected,
             DECIMAL_PLACES,
@@ -853,8 +854,8 @@ class TestStats(BaseTestCase):
     def test_alpha_beta(self, returns, benchmark, expected):
         alpha, beta = alpha_beta(returns, benchmark)
 
-        assert_almost_equal(alpha, expected[0], DECIMAL_PLACES)
-        assert_almost_equal(beta, expected[1], DECIMAL_PLACES)
+        np.testing.assert_almost_equal(alpha, expected[0], DECIMAL_PLACES)
+        np.testing.assert_almost_equal(beta, expected[1], DECIMAL_PLACES)
 
     # Regression tests for alpha
     @parameterized.expand(
@@ -868,7 +869,7 @@ class TestStats(BaseTestCase):
     )
     def test_alpha(self, returns, benchmark, expected):
         observed = self.empyrical.alpha(returns, benchmark)
-        assert_almost_equal(observed, expected, DECIMAL_PLACES)
+        np.testing.assert_almost_equal(observed, expected, DECIMAL_PLACES)
 
         if len(returns) == len(benchmark):
             # Compare to scipy linregress
@@ -879,7 +880,9 @@ class TestStats(BaseTestCase):
                 benchmark_arr[mask], returns_arr[mask]
             )
 
-            assert_almost_equal(observed, intercept * 252, DECIMAL_PLACES)
+            np.testing.assert_almost_equal(
+                observed, intercept * 252, DECIMAL_PLACES
+            )
 
     # Alpha/beta translation tests.
     @parameterized.expand(
@@ -917,21 +920,25 @@ class TestStats(BaseTestCase):
         (alpha_raised, beta_raised) = alpha_beta(returns_raised, benchmark)
         # Alpha should change proportionally to how much returns were
         # translated.
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             ((alpha_standard + 1) ** (1 / 252))
             - ((alpha_depressed + 1) ** (1 / 252)),
             translation,
             DECIMAL_PLACES,
         )
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             ((alpha_raised + 1) ** (1 / 252))
             - ((alpha_standard + 1) ** (1 / 252)),
             translation,
             DECIMAL_PLACES,
         )
         # Beta remains constant.
-        assert_almost_equal(beta_standard, beta_depressed, DECIMAL_PLACES)
-        assert_almost_equal(beta_standard, beta_raised, DECIMAL_PLACES)
+        np.testing.assert_almost_equal(
+            beta_standard, beta_depressed, DECIMAL_PLACES
+        )
+        np.testing.assert_almost_equal(
+            beta_standard, beta_raised, DECIMAL_PLACES
+        )
 
     # Test alpha/beta with a smaller and larger correlation values.
     @parameterized.expand([(0.1, 0.9)])
@@ -986,8 +993,8 @@ class TestStats(BaseTestCase):
             returns,
             benchmark,
         )
-        self.assertFalse(np.isnan(alpha))
-        self.assertFalse(np.isnan(beta))
+        assert not np.isnan(alpha)
+        assert not np.isnan(beta)
 
     @parameterized.expand(
         [
@@ -1012,7 +1019,7 @@ class TestStats(BaseTestCase):
         self, returns, benchmark, expected, decimal_places=DECIMAL_PLACES
     ):
         observed = self.empyrical.beta(returns, benchmark)
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             observed,
             expected,
             decimal_places,
@@ -1031,7 +1038,7 @@ class TestStats(BaseTestCase):
                 benchmark_arr[mask], returns_arr[mask]
             )
 
-            assert_almost_equal(observed, slope)
+            np.testing.assert_almost_equal(observed, slope)
 
     @parameterized.expand(
         [
@@ -1046,10 +1053,10 @@ class TestStats(BaseTestCase):
     )
     def test_alpha_beta_equality(self, returns, benchmark):
         alpha, beta = alpha_beta(returns, benchmark)
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             alpha, self.empyrical.alpha(returns, benchmark), DECIMAL_PLACES
         )
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             beta, self.empyrical.beta(returns, benchmark), DECIMAL_PLACES
         )
 
@@ -1062,8 +1069,8 @@ class TestStats(BaseTestCase):
                 returns_arr[mask], benchmark_arr[mask]
             )
 
-            assert_almost_equal(alpha, intercept)
-            assert_almost_equal(beta, slope)
+            np.testing.assert_almost_equal(alpha, intercept)
+            np.testing.assert_almost_equal(beta, slope)
 
     @parameterized.expand(
         [
@@ -1074,7 +1081,7 @@ class TestStats(BaseTestCase):
         ]
     )
     def test_stability_of_timeseries(self, returns, expected):
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             self.empyrical.stability_of_timeseries(returns),
             expected,
             DECIMAL_PLACES,
@@ -1089,7 +1096,9 @@ class TestStats(BaseTestCase):
         ]
     )
     def test_tail_ratio(self, returns, expected):
-        assert_almost_equal(self.empyrical.tail_ratio(returns), expected, 1)
+        np.testing.assert_almost_equal(
+            self.empyrical.tail_ratio(returns), expected, 1
+        )
 
     # Regression tests for CAGR.
     @parameterized.expand(
@@ -1109,7 +1118,7 @@ class TestStats(BaseTestCase):
         ]
     )
     def test_cagr(self, returns, period, expected):
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             self.empyrical.cagr(returns, period=period),
             expected,
             DECIMAL_PLACES,
@@ -1123,13 +1132,13 @@ class TestStats(BaseTestCase):
         cagr_depressed = self.empyrical.cagr(returns - constant)
         cagr_unchanged = self.empyrical.cagr(returns)
         cagr_raised = self.empyrical.cagr(returns + constant)
-        self.assertTrue(cagr_depressed < cagr_unchanged)
-        self.assertTrue(cagr_unchanged < cagr_raised)
+        assert cagr_depressed < cagr_unchanged
+        assert cagr_unchanged < cagr_raised
 
     # Function does not return np.nan when inputs contain np.nan.
     @parameterized.expand([(sparse_noise,)])
     def test_cagr_with_nan_inputs(self, returns):
-        self.assertFalse(np.isnan(self.empyrical.cagr(returns)))
+        assert not np.isnan(self.empyrical.cagr(returns))
 
     # Adding noise to returns should not significantly alter the cagr values.
     # Confirm that adding noise does not change cagr values to one
@@ -1154,7 +1163,7 @@ class TestStats(BaseTestCase):
         ]
     )
     def test_beta_fragility_heuristic(self, returns, factor_returns, expected):
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             self.empyrical.beta_fragility_heuristic(returns, factor_returns),
             expected,
             DECIMAL_PLACES,
@@ -1193,7 +1202,9 @@ class TestStats(BaseTestCase):
     def test_gpd_risk_estimates(self, returns, expected):
         result = self.empyrical.gpd_risk_estimates_aligned(returns)
         for result_item, expected_item in zip(result, expected):
-            assert_almost_equal(result_item, expected_item, DECIMAL_PLACES)
+            np.testing.assert_almost_equal(
+                result_item, expected_item, DECIMAL_PLACES
+            )
 
     @parameterized.expand(
         [
@@ -1203,7 +1214,9 @@ class TestStats(BaseTestCase):
     )
     def test_roll_max_drawdown(self, returns, window, expected):
         test = self.empyrical.roll_max_drawdown(returns, window=window)
-        assert_almost_equal(np.asarray(test), np.asarray(expected), 4)
+        np.testing.assert_almost_equal(
+            np.asarray(test), np.asarray(expected), 4
+        )
 
         self.assert_indexes_match(test, returns[-len(expected) :])
 
@@ -1224,7 +1237,7 @@ class TestStats(BaseTestCase):
     )
     def test_roll_sharpe_ratio(self, returns, window, expected):
         test = self.empyrical.roll_sharpe_ratio(returns, window=window)
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             np.asarray(test), np.asarray(expected), DECIMAL_PLACES
         )
 
@@ -1239,7 +1252,7 @@ class TestStats(BaseTestCase):
         ]
     )
     def test_capture_ratio(self, returns, factor_returns, expected):
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             self.empyrical.capture(returns, factor_returns),
             expected,
             DECIMAL_PLACES,
@@ -1255,7 +1268,7 @@ class TestStats(BaseTestCase):
         ]
     )
     def test_down_capture(self, returns, factor_returns, expected):
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             self.empyrical.down_capture(returns, factor_returns),
             expected,
             DECIMAL_PLACES,
@@ -1313,13 +1326,13 @@ class TestStats(BaseTestCase):
         alpha_expected = [t[0] for t in expected]
         beta_expected = [t[1] for t in expected]
 
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             np.asarray(alpha_test),
             np.asarray(alpha_expected),
             DECIMAL_PLACES,
         )
 
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             np.asarray(beta_test),
             np.asarray(beta_expected),
             DECIMAL_PLACES,
@@ -1355,7 +1368,7 @@ class TestStats(BaseTestCase):
         test = self.empyrical.roll_up_down_capture(
             returns, factor_returns, window=window
         )
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             np.asarray(test), np.asarray(expected), DECIMAL_PLACES
         )
 
@@ -1384,7 +1397,7 @@ class TestStats(BaseTestCase):
         test = self.empyrical.roll_down_capture(
             returns, factor_returns, window=window
         )
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             np.asarray(test), np.asarray(expected), DECIMAL_PLACES
         )
 
@@ -1418,7 +1431,7 @@ class TestStats(BaseTestCase):
         test = self.empyrical.roll_up_capture(
             returns, factor_returns, window=window
         )
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             np.asarray(test), np.asarray(expected), DECIMAL_PLACES
         )
 
@@ -1440,8 +1453,8 @@ class TestStats(BaseTestCase):
     def test_down_alpha_beta(self, returns, benchmark, expected):
         down_alpha, down_beta = down_alpha_beta(returns, benchmark)
 
-        assert_almost_equal(down_alpha, expected[0], DECIMAL_PLACES)
-        assert_almost_equal(down_beta, expected[1], DECIMAL_PLACES)
+        np.testing.assert_almost_equal(down_alpha, expected[0], DECIMAL_PLACES)
+        np.testing.assert_almost_equal(down_beta, expected[1], DECIMAL_PLACES)
 
     @parameterized.expand(
         [
@@ -1459,8 +1472,8 @@ class TestStats(BaseTestCase):
     def test_up_alpha_beta(self, returns, benchmark, expected):
         up_alpha, up_beta = up_alpha_beta(returns, benchmark)
 
-        assert_almost_equal(up_alpha, expected[0], DECIMAL_PLACES)
-        assert_almost_equal(up_beta, expected[1], DECIMAL_PLACES)
+        np.testing.assert_almost_equal(up_alpha, expected[0], DECIMAL_PLACES)
+        np.testing.assert_almost_equal(up_beta, expected[1], DECIMAL_PLACES)
 
     @parameterized.expand(
         [
@@ -1472,7 +1485,7 @@ class TestStats(BaseTestCase):
         ]
     )
     def test_up_down_capture(self, returns, factor_returns, expected):
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             self.empyrical.up_down_capture(returns, factor_returns),
             expected,
             DECIMAL_PLACES,
@@ -1488,7 +1501,7 @@ class TestStats(BaseTestCase):
         ]
     )
     def test_up_capture(self, returns, factor_returns, expected):
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             self.empyrical.up_capture(returns, factor_returns),
             expected,
             DECIMAL_PLACES,
@@ -1498,19 +1511,21 @@ class TestStats(BaseTestCase):
         value_at_risk = self.empyrical.value_at_risk
 
         returns = [1.0, 2.0]
-        assert_almost_equal(value_at_risk(returns, cutoff=0.0), 1.0)
-        assert_almost_equal(value_at_risk(returns, cutoff=0.3), 1.3)
-        assert_almost_equal(value_at_risk(returns, cutoff=1.0), 2.0)
+        np.testing.assert_almost_equal(value_at_risk(returns, cutoff=0.0), 1.0)
+        np.testing.assert_almost_equal(value_at_risk(returns, cutoff=0.3), 1.3)
+        np.testing.assert_almost_equal(value_at_risk(returns, cutoff=1.0), 2.0)
 
         returns = [1, 81, 82, 83, 84, 85]
-        assert_almost_equal(value_at_risk(returns, cutoff=0.1), 41)
-        assert_almost_equal(value_at_risk(returns, cutoff=0.2), 81)
-        assert_almost_equal(value_at_risk(returns, cutoff=0.3), 81.5)
+        np.testing.assert_almost_equal(value_at_risk(returns, cutoff=0.1), 41)
+        np.testing.assert_almost_equal(value_at_risk(returns, cutoff=0.2), 81)
+        np.testing.assert_almost_equal(
+            value_at_risk(returns, cutoff=0.3), 81.5
+        )
 
         # Test a returns stream of 21 data points at different cutoffs.
         returns = rand.normal(0, 0.02, 21)
         for cutoff in (0, 0.0499, 0.05, 0.20, 0.999, 1):
-            assert_almost_equal(
+            np.testing.assert_almost_equal(
                 value_at_risk(returns, cutoff),
                 np.percentile(returns, cutoff * 100),
             )
@@ -1522,11 +1537,11 @@ class TestStats(BaseTestCase):
         # A single-valued array will always just have a CVaR of its only value.
         returns = rand.normal(0, 0.02, 1)
         expected_cvar = returns[0]
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             conditional_value_at_risk(returns, cutoff=0),
             expected_cvar,
         )
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             conditional_value_at_risk(returns, cutoff=1),
             expected_cvar,
         )
@@ -1540,7 +1555,7 @@ class TestStats(BaseTestCase):
             var = value_at_risk(returns, cutoff)
             expected_cvar = np.mean(returns[returns <= var])
 
-            assert_almost_equal(
+            np.testing.assert_almost_equal(
                 conditional_value_at_risk(returns, cutoff),
                 expected_cvar,
             )
@@ -1661,8 +1676,8 @@ class TestHelpers(BaseTestCase):
             function=empyrical.capture,
         )
 
-        self.assertTrue(isinstance(pd_res, float))
-        assert_almost_equal(pd_res, np_res, DECIMAL_PLACES)
+        assert isinstance(pd_res, float)
+        np.testing.assert_almost_equal(pd_res, np_res, DECIMAL_PLACES)
 
     def test_up(self):
         pd_res = emutils.up(
@@ -1674,11 +1689,11 @@ class TestHelpers(BaseTestCase):
             function=empyrical.capture,
         )
 
-        self.assertTrue(isinstance(pd_res, float))
-        assert_almost_equal(pd_res, np_res, DECIMAL_PLACES)
+        assert isinstance(pd_res, float)
+        np.testing.assert_almost_equal(pd_res, np_res, DECIMAL_PLACES)
 
     def test_roll_bad_types(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             emutils.roll(
                 self.returns.values,
                 self.factor_returns,
@@ -1693,7 +1708,7 @@ class TestHelpers(BaseTestCase):
             window=self.ser_length + 100,
             function=empyrical.max_drawdown,
         )
-        self.assertTrue(res.size == 0)
+        assert res.size == 0
 
 
 class Test2DStats(BaseTestCase):
@@ -1802,7 +1817,7 @@ class Test2DStats(BaseTestCase):
             starting_value=starting_value,
         )
 
-        assert_almost_equal(
+        np.testing.assert_almost_equal(
             np.asarray(cum_returns),
             np.asarray(expected),
             4,
@@ -1822,7 +1837,7 @@ class Test2DStats(BaseTestCase):
             returns,
             starting_value=starting_value,
         )
-        assert_almost_equal(np.array(result), expected, 5)
+        np.testing.assert_almost_equal(np.array(result), expected, 5)
         self.assert_indexes_match(result, expected)
 
     @property
@@ -1926,7 +1941,7 @@ class ReturnTypeEmpyricalProxy(object):
 
             # Check that inputs weren't mutated by func.
             for i, arg_copy in arg_copies:
-                assert_allclose(
+                np.testing.assert_allclose(
                     args[i],
                     arg_copy,
                     atol=0.5 * 10 ** (-DECIMAL_PLACES),
@@ -1934,7 +1949,7 @@ class ReturnTypeEmpyricalProxy(object):
                     % (i, func.__name__),
                 )
             for kwarg_name, kwarg_copy in kwarg_copies.items():
-                assert_allclose(
+                np.testing.assert_allclose(
                     kwargs[kwarg_name],
                     kwarg_copy,
                     atol=0.5 * 10 ** (-DECIMAL_PLACES),
@@ -1967,7 +1982,7 @@ class ConvertPandasEmpyricalProxy(ReturnTypeEmpyricalProxy):
 
     def __getattr__(self, item):
         if self._pandas_only:
-            raise SkipTest(
+            raise unittest.SkipTest(
                 "empyrical.%s expects pandas-only inputs that have "
                 "dt indices/labels" % item
             )
