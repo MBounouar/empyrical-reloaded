@@ -11,7 +11,7 @@ from functools import wraps
 import pytest
 import empyrical
 import empyrical.utils as emutils
-from ..stats import (
+from empyrical.stats import (
     aggregate_returns,
     alpha_beta,
     up_alpha_beta,
