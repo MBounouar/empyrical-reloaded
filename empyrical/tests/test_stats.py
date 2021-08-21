@@ -23,7 +23,7 @@ DECIMAL_PLACES = 8
 rand = np.random.RandomState(1337)
 
 
-class BaseTestCase(unittest.TestCase):
+class TestStats:
     def assert_indexes_match(self, result, expected):
         """
         Assert that two pandas objects have the same indices.
@@ -39,8 +39,6 @@ class BaseTestCase(unittest.TestCase):
         ):
             pd.testing.assert_index_equal(result.columns, expected.columns)
 
-
-class TestStats(BaseTestCase):
     # Simple benchmark, no drawdown
     simple_benchmark = pd.Series(
         np.array([0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0]) / 100,
@@ -1627,24 +1625,42 @@ class TestStatsIntIndex(TestStats):
         pass
 
 
-class TestHelpers(BaseTestCase):
+@pytest.fixture(scope="function")
+def set_helper(request):
+    request.cls.ser_length = 120
+    request.cls.window = 12
+
+    request.cls.returns = pd.Series(
+        rand.randn(1, 120)[0] / 100.0,
+        index=pd.date_range("2000-1-30", periods=120, freq="M"),
+    )
+
+    request.cls.factor_returns = pd.Series(
+        rand.randn(1, 120)[0] / 100.0,
+        index=pd.date_range("2000-1-30", periods=120, freq="M"),
+    )
+
+
+@pytest.mark.usefixtures("set_helper")
+class TestHelpers:
     """
     Tests for helper methods and utils.
     """
 
-    def setUp(self):
-        self.ser_length = 120
-        self.window = 12
+    def assert_indexes_match(self, result, expected):
+        """
+        Assert that two pandas objects have the same indices.
 
-        self.returns = pd.Series(
-            rand.randn(1, 120)[0] / 100.0,
-            index=pd.date_range("2000-1-30", periods=120, freq="M"),
-        )
+        This is a method instead of a free function so that we can override it
+        to be a no-op in suites like TestStatsArrays that unwrap pandas objects
+        into ndarrays.
+        """
+        pd.testing.assert_index_equal(result.index, expected.index)
 
-        self.factor_returns = pd.Series(
-            rand.randn(1, 120)[0] / 100.0,
-            index=pd.date_range("2000-1-30", periods=120, freq="M"),
-        )
+        if isinstance(result, pd.DataFrame) and isinstance(
+            expected, pd.DataFrame
+        ):
+            pd.testing.assert_index_equal(result.columns, expected.columns)
 
     def test_roll_pandas(self):
         res = emutils.roll(
@@ -1654,7 +1670,7 @@ class TestHelpers(BaseTestCase):
             function=empyrical.alpha_aligned,
         )
 
-        self.assertEqual(res.size, self.ser_length - self.window + 1)
+        assert res.size == self.ser_length - self.window + 1
 
     def test_roll_ndarray(self):
         res = emutils.roll(
@@ -1664,7 +1680,7 @@ class TestHelpers(BaseTestCase):
             function=empyrical.alpha_aligned,
         )
 
-        self.assertEqual(len(res), self.ser_length - self.window + 1)
+        assert len(res), self.ser_length - self.window + 1
 
     def test_down(self):
         pd_res = emutils.down(
@@ -1711,10 +1727,25 @@ class TestHelpers(BaseTestCase):
         assert res.size == 0
 
 
-class Test2DStats(BaseTestCase):
+class Test2DStats:
     """
     Tests for functions that are capable of outputting a DataFrame.
     """
+
+    def assert_indexes_match(self, result, expected):
+        """
+        Assert that two pandas objects have the same indices.
+
+        This is a method instead of a free function so that we can override it
+        to be a no-op in suites like TestStatsArrays that unwrap pandas objects
+        into ndarrays.
+        """
+        pd.testing.assert_index_equal(result.index, expected.index)
+
+        if isinstance(result, pd.DataFrame) and isinstance(
+            expected, pd.DataFrame
+        ):
+            pd.testing.assert_index_equal(result.columns, expected.columns)
 
     input_one = [
         np.nan,
@@ -1917,7 +1948,7 @@ class ReturnTypeEmpyricalProxy(object):
                 tuple_result = (result,)
 
             for r in tuple_result:
-                self._test_case.assertIsInstance(r, self._return_types)
+                assert isinstance(r, self._return_types)
             return result
 
         return check_return_type
