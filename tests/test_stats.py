@@ -1,8 +1,6 @@
 from copy import copy
 from operator import attrgetter
 
-from parameterized import parameterized
-import unittest
 import numpy as np
 import pandas as pd
 from pandas.core.generic import NDFrame
@@ -1035,16 +1033,22 @@ class TestStats(BaseTestClass):
         assert not np.isnan(alpha)
         assert not np.isnan(beta)
 
-    @parameterized.expand(
+    @pytest.mark.parametrize(
+        "returns, benchmark, expected, decimal_places",
         [
-            (empty_returns, simple_benchmark, np.nan),
-            (one_return, one_return, np.nan),
-            (mixed_returns, flat_line_1, np.nan),
-            (noise, noise, 1.0),
-            (2 * noise, noise, 2.0),
-            (noise, inv_noise, -1.0),
-            (2 * noise, inv_noise, -2.0),
-            (sparse_noise * flat_line_1_tz, sparse_flat_line_1_tz, np.nan),
+            (empty_returns, simple_benchmark, np.nan, DECIMAL_PLACES),
+            (one_return, one_return, np.nan, DECIMAL_PLACES),
+            (mixed_returns, flat_line_1, np.nan, DECIMAL_PLACES),
+            (noise, noise, 1.0, DECIMAL_PLACES),
+            (2 * noise, noise, 2.0, DECIMAL_PLACES),
+            (noise, inv_noise, -1.0, DECIMAL_PLACES),
+            (2 * noise, inv_noise, -2.0, DECIMAL_PLACES),
+            (
+                sparse_noise * flat_line_1_tz,
+                sparse_flat_line_1_tz,
+                np.nan,
+                DECIMAL_PLACES,
+            ),
             (
                 simple_benchmark
                 + rand.normal(0, 0.001, len(simple_benchmark)),
@@ -1055,7 +1059,11 @@ class TestStats(BaseTestClass):
         ],
     )
     def test_beta(
-        self, returns, benchmark, expected, decimal_places=DECIMAL_PLACES
+        self,
+        returns,
+        benchmark,
+        expected,
+        decimal_places,
     ):
         observed = self.empyrical.beta(returns, benchmark)
         np.testing.assert_almost_equal(
@@ -1181,8 +1189,7 @@ class TestStats(BaseTestClass):
         assert cagr_unchanged < cagr_raised
 
     # Function does not return np.nan when inputs contain np.nan.
-    # @pytest.mark.parametrize("returns", [(sparse_noise,)])
-    @parameterized.expand([(sparse_noise,)])
+    @pytest.mark.parametrize("returns", [sparse_noise])
     def test_cagr_with_nan_inputs(self, returns):
         assert not np.isnan(self.empyrical.cagr(returns))
 
@@ -2047,7 +2054,6 @@ class ReturnTypeEmpyricalProxy(object):
         return check_not_mutated
 
 
-# TODO: purpuse unclear, removed for now
 class ConvertPandasEmpyricalProxy(ReturnTypeEmpyricalProxy):
     """
     A ReturnTypeEmpyricalProxy which also converts pandas NDFrame inputs to
@@ -2067,7 +2073,7 @@ class ConvertPandasEmpyricalProxy(ReturnTypeEmpyricalProxy):
 
     def __getattr__(self, item):
         if self._pandas_only:
-            raise unittest.SkipTest(
+            pytest.skip(
                 "empyrical.%s expects pandas-only inputs that have "
                 "dt indices/labels" % item
             )
@@ -2089,7 +2095,6 @@ class ConvertPandasEmpyricalProxy(ReturnTypeEmpyricalProxy):
         return convert_args
 
 
-# TODO: purpuse unclear, removed for now
 class PassArraysEmpyricalProxy(ConvertPandasEmpyricalProxy):
     """
     A ConvertPandasEmpyricalProxy which converts NDFrame inputs to empyrical
