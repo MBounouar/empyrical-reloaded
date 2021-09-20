@@ -668,3 +668,80 @@ def _create_binary_vectorized_roll_function(function):
 
 def _flatten(arr):
     return arr if not isinstance(arr, pd.Series) else arr.values
+
+
+def _aligned_series(*many_series):
+    """
+    Return a new list of series containing the data in the input series, but
+    with their indices aligned. NaNs will be filled in for missing values.
+
+    Parameters
+    ----------
+    *many_series
+        The series to align.
+
+    Returns
+    -------
+    aligned_series : iterable[array-like]
+        A new list of series containing the data in the input series, but
+        with their indices aligned. NaNs will be filled in for missing values.
+
+    """
+    head = many_series[0]
+    tail = many_series[1:]
+    n = len(head)
+    if isinstance(head, np.ndarray) and all(
+        len(s) == n and isinstance(s, np.ndarray) for s in tail
+    ):
+        # optimization: ndarrays of the same length are already aligned
+        return many_series
+
+    # dataframe has no ``itervalues``
+    return (
+        v for _, v in pd.concat(map(_to_pandas, many_series), axis=1).items()
+    )
+
+
+def _to_pandas(ob):
+    """Convert an array-like to a pandas object.
+
+    Parameters
+    ----------
+    ob : array-like
+        The object to convert.
+
+    Returns
+    -------
+    pandas_structure : pd.Series or pd.DataFrame
+        The correct structure based on the dimensionality of the data.
+    """
+    if isinstance(ob, (pd.Series, pd.DataFrame)):
+        return ob
+
+    if ob.ndim == 1:
+        return pd.Series(ob)
+    elif ob.ndim == 2:
+        return pd.DataFrame(ob)
+    else:
+        raise ValueError(
+            "cannot convert array of dim > 2 to a pandas structure",
+        )
+
+
+def _adjust_returns(returns, adjustment_factor):
+    """
+    Returns the returns series adjusted by adjustment_factor. Optimizes for the
+    case of adjustment_factor being 0 by returning returns itself, not a copy!
+
+    Parameters
+    ----------
+    returns : pd.Series or np.ndarray
+    adjustment_factor : pd.Series or np.ndarray or float or int
+
+    Returns
+    -------
+    adjusted_returns : array-like
+    """
+    if isinstance(adjustment_factor, (float, int)) and adjustment_factor == 0:
+        return returns
+    return returns - adjustment_factor

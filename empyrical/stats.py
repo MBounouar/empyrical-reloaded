@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import math
+from collections import OrderedDict
 import pandas as pd
 import numpy as np
 from math import pow
@@ -29,39 +30,19 @@ from .utils import (
     roll,
     _create_unary_vectorized_roll_function,
     _create_binary_vectorized_roll_function,
+    _aligned_series,
+    _to_pandas,
+    _adjust_returns,
 )
 from .periods import ANNUALIZATION_FACTORS, APPROX_BDAYS_PER_YEAR
 from .periods import DAILY, WEEKLY, MONTHLY, QUARTERLY, YEARLY
 
 # Placeholder TODO's
-# batting average
 # diversification ratio
-# upmarket capture ratio
-# downmarket capture ratio
-# updown market capture ratio
 # information ratio  stability
 # excess return stability
 # Downside Beta
 # Upside Beta
-
-
-def _adjust_returns(returns, adjustment_factor):
-    """
-    Returns the returns series adjusted by adjustment_factor. Optimizes for the
-    case of adjustment_factor being 0 by returning returns itself, not a copy!
-
-    Parameters
-    ----------
-    returns : pd.Series or np.ndarray
-    adjustment_factor : pd.Series or np.ndarray or float or int
-
-    Returns
-    -------
-    adjusted_returns : array-like
-    """
-    if isinstance(adjustment_factor, (float, int)) and adjustment_factor == 0:
-        return returns
-    return returns - adjustment_factor
 
 
 def annualization_factor(period, annualization):
@@ -854,64 +835,6 @@ def excess_sharpe(returns, factor_returns, out=None):
 
 
 roll_excess_sharpe = _create_binary_vectorized_roll_function(excess_sharpe)
-
-
-def _to_pandas(ob):
-    """Convert an array-like to a pandas object.
-
-    Parameters
-    ----------
-    ob : array-like
-        The object to convert.
-
-    Returns
-    -------
-    pandas_structure : pd.Series or pd.DataFrame
-        The correct structure based on the dimensionality of the data.
-    """
-    if isinstance(ob, (pd.Series, pd.DataFrame)):
-        return ob
-
-    if ob.ndim == 1:
-        return pd.Series(ob)
-    elif ob.ndim == 2:
-        return pd.DataFrame(ob)
-    else:
-        raise ValueError(
-            "cannot convert array of dim > 2 to a pandas structure",
-        )
-
-
-def _aligned_series(*many_series):
-    """
-    Return a new list of series containing the data in the input series, but
-    with their indices aligned. NaNs will be filled in for missing values.
-
-    Parameters
-    ----------
-    *many_series
-        The series to align.
-
-    Returns
-    -------
-    aligned_series : iterable[array-like]
-        A new list of series containing the data in the input series, but
-        with their indices aligned. NaNs will be filled in for missing values.
-
-    """
-    head = many_series[0]
-    tail = many_series[1:]
-    n = len(head)
-    if isinstance(head, np.ndarray) and all(
-        len(s) == n and isinstance(s, np.ndarray) for s in tail
-    ):
-        # optimization: ndarrays of the same length are already aligned
-        return many_series
-
-    # dataframe has no ``itervalues``
-    return (
-        v for _, v in pd.concat(map(_to_pandas, many_series), axis=1).items()
-    )
 
 
 def alpha_beta(
@@ -1918,6 +1841,28 @@ def up_down_capture(returns, factor_returns, **kwargs):
     return up_capture(returns, factor_returns, **kwargs) / down_capture(
         returns, factor_returns, **kwargs
     )
+
+
+def batting_average(returns, factor_returns, **kwargs):
+    results = OrderedDict(
+        {
+            "batting average": np.nan,
+            "up market": np.nan,
+            "down market": np.nan,
+        }
+    )
+    active_return = _adjust_returns(returns, factor_returns)
+    bt = active_return > 0
+    up = active_return[factor_returns >= 0.0]
+    down = active_return[factor_returns < 0.0]
+    if len(bt) > 0:
+        results["batting average"] = bt.mean()
+    if len(up) > 0:
+        results["up market"] = up.mean()
+    if len(down) > 0:
+        results["down market"] = down.mean()
+
+    return pd.Series(results, index=results.keys())
 
 
 def up_alpha_beta(returns, factor_returns, **kwargs):
