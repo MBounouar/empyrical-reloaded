@@ -562,3 +562,109 @@ def rolling_window(array, length, mutable=False):
     out = as_strided(array, new_shape, new_strides)
     out.setflags(write=mutable)
     return out
+
+
+def _create_unary_vectorized_roll_function(function):
+    def unary_vectorized_roll(arr, window, out=None, **kwargs):
+        """
+        Computes the {human_readable} measure over a rolling window.
+
+        Parameters
+        ----------
+        arr : array-like
+            The array to compute the rolling {human_readable} over.
+        window : int
+            Size of the rolling window in terms of the periodicity of the data.
+        out : array-like, optional
+            Array to use as output buffer.
+            If not passed, a new array will be created.
+        **kwargs
+            Forwarded to :func:`~empyrical.{name}`.
+
+        Returns
+        -------
+        rolling_{name} : array-like
+            The rolling {human_readable}.
+        """
+        allocated_output = out is None
+
+        if len(arr):
+            out = function(
+                rolling_window(_flatten(arr), min(len(arr), window)).T,
+                out=out,
+                **kwargs,
+            )
+        else:
+            out = np.empty(0, dtype="float64")
+
+        if allocated_output and isinstance(arr, pd.Series):
+            out = pd.Series(out, index=arr.index[-len(out) :])
+
+        return out
+
+    unary_vectorized_roll.__doc__ = unary_vectorized_roll.__doc__.format(
+        name=function.__name__,
+        human_readable=function.__name__.replace("_", " "),
+    )
+    unary_vectorized_roll.__name__ = f"rolling_{function.__name__}"
+
+    return unary_vectorized_roll
+
+
+def _create_binary_vectorized_roll_function(function):
+    def binary_vectorized_roll(lhs, rhs, window, out=None, **kwargs):
+        """
+        Computes the {human_readable} measure over a rolling window.
+
+        Parameters
+        ----------
+        lhs : array-like
+            The first array to pass to the rolling {human_readable}.
+        rhs : array-like
+            The second array to pass to the rolling {human_readable}.
+        window : int
+            Size of the rolling window in terms of the periodicity of the data.
+        out : array-like, optional
+            Array to use as output buffer.
+            If not passed, a new array will be created.
+        **kwargs
+            Forwarded to :func:`~empyrical.{name}`.
+
+        Returns
+        -------
+        rolling_{name} : array-like
+            The rolling {human_readable}.
+        """
+        allocated_output = out is None
+
+        if window >= 1 and len(lhs) and len(rhs):
+            out = function(
+                rolling_window(_flatten(lhs), min(len(lhs), window)).T,
+                rolling_window(_flatten(rhs), min(len(rhs), window)).T,
+                out=out,
+                **kwargs,
+            )
+        elif allocated_output:
+            out = np.empty(0, dtype="float64")
+        else:
+            out[()] = np.nan
+
+        if allocated_output:
+            if out.ndim == 1 and isinstance(lhs, pd.Series):
+                out = pd.Series(out, index=lhs.index[-len(out) :])
+            elif out.ndim == 2 and isinstance(lhs, pd.Series):
+                out = pd.DataFrame(out, index=lhs.index[-len(out) :])
+        return out
+
+    binary_vectorized_roll.__doc__ = binary_vectorized_roll.__doc__.format(
+        name=function.__name__,
+        human_readable=function.__name__.replace("_", " "),
+    )
+
+    binary_vectorized_roll.__name__ = f"rolling_{function.__name__}"
+
+    return binary_vectorized_roll
+
+
+def _flatten(arr):
+    return arr if not isinstance(arr, pd.Series) else arr.values
