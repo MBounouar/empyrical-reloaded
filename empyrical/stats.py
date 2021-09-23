@@ -246,6 +246,63 @@ def aggregate_returns(returns, convert_to):
     return returns.groupby(grouping).apply(cumulate_returns)
 
 
+def drawdown_series(returns, out=None):
+    """
+    Determines the series of drawdown of a strategy.
+
+    Parameters
+    ----------
+    returns : pd.Series or np.ndarray
+        Daily returns of the strategy, noncumulative.
+        - See full explanation in :func:`~empyrical.stats.cum_returns`.
+    out : array-like, optional
+        Array to use as output buffer.
+        If not passed, a new array will be created.
+
+    Returns
+    -------
+    drawdown_series :  pd.Series, np.ndarray
+
+    Note
+    -----
+    See https://en.wikipedia.org/wiki/Drawdown_(economics) for more details.
+    """
+    allocated_output = out is None
+    if allocated_output:
+        out = np.empty(
+            (returns.shape[0] + 1,) + returns.shape[1:],
+            dtype="float64",
+        )
+
+    returns_1d = returns.ndim == 1
+
+    if len(returns) < 1:
+        out[()] = np.nan
+        if returns_1d:
+            out = out.item()
+        return out
+
+    returns_array = np.asanyarray(returns)
+
+    out[0] = start = 100
+    cum_returns(returns_array, starting_value=start, out=out[1:])
+
+    max_return = np.fmax.accumulate(out, axis=0)
+
+    np.divide((out - max_return), max_return, out=out)
+
+    if returns.ndim == 1 and isinstance(returns, pd.Series):
+        out = pd.Series(out[1:], index=returns.index)
+    elif isinstance(returns, pd.DataFrame):
+        out = pd.DataFrame(
+            out[1:],
+            index=returns.index,
+            columns=returns.columns,
+        )
+
+    return out
+
+
 def max_drawdown(returns, out=None):
     """
     Determines the maximum drawdown of a strategy.
@@ -438,6 +495,14 @@ def annual_volatility(
 roll_annual_volatility = _create_unary_vectorized_roll_function(
     annual_volatility,
 )
+
+
+def ulcer_index():
+    pass
+
+
+def pain_index():
+    pass
 
 
 def calmar_ratio(returns, period=DAILY, annualization=None):
