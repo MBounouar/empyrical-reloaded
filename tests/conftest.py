@@ -2,11 +2,10 @@ import pytest
 import pandas as pd
 import numpy as np
 
-rand = np.random.RandomState(1337)
-
 
 @pytest.fixture(scope="function")
 def set_helpers(request):
+    rand = np.random.RandomState(1337)
     request.cls.ser_length = 120
     request.cls.window = 12
 
@@ -22,7 +21,96 @@ def set_helpers(request):
 
 
 @pytest.fixture(scope="session")
-def returns_types():
+def series_data():
+    rand = np.random.RandomState(1337)
+
+    noise = pd.Series(
+        rand.normal(0, 0.001, 1000),
+        index=pd.date_range("2000-1-30", periods=1000, freq="D", tz="UTC"),
+    )
+
+    inv_noise = noise.multiply(-1)
+
+    noise_uniform = pd.Series(
+        rand.uniform(-0.01, 0.01, 1000),
+        index=pd.date_range("2000-1-30", periods=1000, freq="D", tz="UTC"),
+    )
+
+    one = [
+        -0.00171614,
+        0.01322056,
+        0.03063862,
+        -0.01422057,
+        -0.00489779,
+        0.01268925,
+        -0.03357711,
+        0.01797036,
+    ]
+
+    two = [
+        0.01846232,
+        0.00793951,
+        -0.01448395,
+        0.00422537,
+        -0.00339611,
+        0.03756813,
+        0.0151531,
+        0.03549769,
+    ]
+
+    # Sparse noise, same as noise but with np.nan sprinkled in
+    replace_nan = rand.choice(noise.index.tolist(), rand.randint(1, 10))
+    sparse_noise = noise.replace(replace_nan, np.nan)
+
+    # Flat line tz
+    flat_line_1_tz = pd.Series(
+        np.linspace(0.01, 0.01, num=1000),
+        index=pd.date_range("2000-1-30", periods=1000, freq="D", tz="UTC"),
+    )
+
+    # Sparse flat line at 0.01
+    replace_nan = rand.choice(noise.index.tolist(), rand.randint(1, 10))
+    sparse_flat_line_1_tz = flat_line_1_tz.replace(replace_nan, np.nan)
+
+    df_index_simple = pd.date_range("2000-1-30", periods=8, freq="D")
+    df_index_week = pd.date_range("2000-1-30", periods=8, freq="W")
+    df_index_month = pd.date_range("2000-1-30", periods=8, freq="M")
+
+    df_week = pd.DataFrame(
+        {
+            "one": pd.Series(one, index=df_index_week),
+            "two": pd.Series(two, index=df_index_week),
+        }
+    )
+
+    df_month = pd.DataFrame(
+        {
+            "one": pd.Series(one, index=df_index_month),
+            "two": pd.Series(two, index=df_index_month),
+        }
+    )
+
+    df_simple = pd.DataFrame(
+        {
+            "one": pd.Series(one, index=df_index_simple),
+            "two": pd.Series(two, index=df_index_simple),
+        }
+    )
+
+    df_week = pd.DataFrame(
+        {
+            "one": pd.Series(one, index=df_index_week),
+            "two": pd.Series(two, index=df_index_week),
+        }
+    )
+
+    df_month = pd.DataFrame(
+        {
+            "one": pd.Series(one, index=df_index_month),
+            "two": pd.Series(two, index=df_index_month),
+        }
+    )
+
     return {
         # Simple benchmark, no drawdown
         "simple_benchmark": pd.Series(
@@ -76,10 +164,7 @@ def returns_types():
         ),
         # Random noise
         "noise": noise,
-        "noise_uniform": pd.Series(
-            rand.uniform(-0.01, 0.01, 1000),
-            index=pd.date_range("2000-1-30", periods=1000, freq="D", tz="UTC"),
-        ),
+        "noise_uniform": noise_uniform,
         # Random noise inv
         "inv_noise": inv_noise,
         # Flat line
@@ -87,7 +172,11 @@ def returns_types():
             np.linspace(0, 0, num=1000),
             index=pd.date_range("2000-1-30", periods=1000, freq="D", tz="UTC"),
         ),
-        # Flat line
+        "flat_line_1": pd.Series(
+            np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]) / 100,
+            index=pd.date_range("2000-1-30", periods=9, freq="D"),
+        ),
+        # Flat line with tz
         "flat_line_1_tz": pd.Series(
             np.linspace(0.01, 0.01, num=1000),
             index=pd.date_range("2000-1-30", periods=1000, freq="D", tz="UTC"),
@@ -118,143 +207,12 @@ def returns_types():
 
 
 @pytest.fixture
-def noise():
-    # Random noise
-    return (
-        pd.Series(
-            rand.normal(0, 0.001, 1000),
-            index=pd.date_range("2000-1-30", periods=1000, freq="D", tz="UTC"),
-        ),
-    )
-
-
-@pytest.fixture
-def inv_noise():
-    return noise.multiply(-1)
-
-
-@pytest.fixture
-def sparse_noise():
-    # Sparse noise, same as noise but with np.nan sprinkled in
-    replace_nan = rand.choice(noise.index.tolist(), rand.randint(1, 10))
-    return noise.replace(replace_nan, np.nan)
-
-
-@pytest.fixture
-def flat_line_1_tz():
-    # Flat line
-    return (
-        pd.Series(
-            np.linspace(0.01, 0.01, num=1000),
-            index=pd.date_range("2000-1-30", periods=1000, freq="D", tz="UTC"),
-        ),
-    )
-
-
-@pytest.fixture
-def sparse_flat_line_1_tz():
-    # Sparse flat line at 0.01
-    replace_nan = rand.choice(noise.index.tolist(), rand.randint(1, 10))
-    return flat_line_1_tz.replace(replace_nan, np.nan)
-
-
-@pytest.fixture
-def one():
-    return [
-        -0.00171614,
-        0.01322056,
-        0.03063862,
-        -0.01422057,
-        -0.00489779,
-        0.01268925,
-        -0.03357711,
-        0.01797036,
-    ]
-
-
-@pytest.fixture
-def two():
-    return (
-        [
-            0.01846232,
-            0.00793951,
-            -0.01448395,
-            0.00422537,
-            -0.00339611,
-            0.03756813,
-            0.0151531,
-            0.03549769,
-        ],
-    )
-
-
-@pytest.fixture
-def df_index_simple():
-    return (pd.date_range("2000-1-30", periods=8, freq="D"),)
-
-
-@pytest.fixture
-def df_index_week():
-    return (pd.date_range("2000-1-30", periods=8, freq="W"),)
-
-
-@pytest.fixture
-def df_index_month():
-    return (pd.date_range("2000-1-30", periods=8, freq="M"),)
-
-
-@pytest.fixture
-def df_week():
-    return pd.DataFrame(
-        {
-            "one": pd.Series(one, index=df_index_week),
-            "two": pd.Series(two, index=df_index_week),
-        }
-    )
-
-
-@pytest.fixture
-def df_month(one, two):
-    return pd.DataFrame(
-        {
-            "one": pd.Series(one, index=df_index_month),
-            "two": pd.Series(two, index=df_index_month),
-        }
-    )
-
-
-@pytest.fixture
-def df_simple():
-    return pd.DataFrame(
-        {
-            "one": pd.Series(one, index=df_index_simple),
-            "two": pd.Series(two, index=df_index_simple),
-        }
-    )
-
-
-@pytest.fixture
-def df_week():
-    return pd.DataFrame(
-        {
-            "one": pd.Series(one, index=df_index_week),
-            "two": pd.Series(two, index=df_index_week),
-        }
-    )
-
-
-@pytest.fixture
-def df_month():
-    return pd.DataFrame(
-        {
-            "one": pd.Series(one, index=df_index_month),
-            "two": pd.Series(two, index=df_index_month),
-        }
-    )
-
-
-@pytest.fixture
-def returns(returns_types, request):
-    """Create a Sushi instance based on recipes."""
+def returns(series_data, request):
     name = request.param
-    return returns_types[name]
+    return series_data[name]
+
+
+@pytest.fixture
+def prices(series_data, request):
+    name = request.param
+    return series_data[name]
