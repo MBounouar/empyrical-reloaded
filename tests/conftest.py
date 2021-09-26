@@ -111,6 +111,71 @@ def series_data():
         }
     )
 
+    input_one = [
+        np.nan,
+        0.01322056,
+        0.03063862,
+        -0.01422057,
+        -0.00489779,
+        0.01268925,
+        -0.03357711,
+        0.01797036,
+    ]
+    input_two = [
+        0.01846232,
+        0.00793951,
+        -0.01448395,
+        0.00422537,
+        -0.00339611,
+        0.03756813,
+        0.0151531,
+        np.nan,
+    ]
+
+    expected_0_one = [
+        0.000000,
+        0.013221,
+        0.044264,
+        0.029414,
+        0.024372,
+        0.037371,
+        0.002539,
+        0.020555,
+    ]
+    expected_0_two = [
+        0.018462,
+        0.026548,
+        0.011680,
+        0.015955,
+        0.012504,
+        0.050542,
+        0.066461,
+        0.066461,
+    ]
+
+    expected_100_one = [
+        100.000000,
+        101.322056,
+        104.426424,
+        102.941421,
+        102.437235,
+        103.737087,
+        100.253895,
+        102.055494,
+    ]
+    expected_100_two = [
+        101.846232,
+        102.654841,
+        101.167994,
+        101.595466,
+        101.250436,
+        105.054226,
+        106.646123,
+        106.646123,
+    ]
+
+    df_index = pd.date_range("2000-1-30", periods=8, freq="D")
+
     return {
         # Simple benchmark, no drawdown
         "simple_benchmark": pd.Series(
@@ -203,6 +268,13 @@ def series_data():
         "df_simple": df_simple,
         "df_week": df_week,
         "df_month": df_month,
+        "df_empty": pd.DataFrame(),
+        "df_input": pd.DataFrame(
+            {
+                "one": pd.Series(input_one, index=df_index),
+                "two": pd.Series(input_two, index=df_index),
+            }
+        ),
     }
 
 

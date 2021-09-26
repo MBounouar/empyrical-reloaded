@@ -31,7 +31,6 @@ from .utils import (
     _create_unary_vectorized_roll_function,
     _create_binary_vectorized_roll_function,
     _aligned_series,
-    _to_pandas,
     _adjust_returns,
 )
 from .periods import ANNUALIZATION_FACTORS, APPROX_BDAYS_PER_YEAR
@@ -248,11 +247,11 @@ def aggregate_returns(returns, convert_to):
 
 def drawdown_series(returns, out=None):
     """
-    Determines the series of drawdown of a strategy.
+    Computes the series of drawdowns of a strategy.
 
     Parameters
     ----------
-    returns : pd.Series or np.ndarray
+    returns : pd.Series, pd.DataFrame or np.ndarray
         Daily returns of the strategy, noncumulative.
         - See full explanation in :func:`~empyrical.stats.cum_returns`.
     out : array-like, optional
@@ -261,7 +260,7 @@ def drawdown_series(returns, out=None):
 
     Returns
     -------
-    drawdown_series :  pd.Series, np.ndarray
+    drawdown_series :  pd.Series, pd.DataFrame or np.ndarray
 
     Note
     -----
@@ -318,7 +317,7 @@ def max_drawdown(returns, out=None):
 
     Returns
     -------
-    max_drawdown : float
+    max_drawdown : float, np.array or pd.Series
 
     Note
     -----
@@ -336,22 +335,11 @@ def max_drawdown(returns, out=None):
             out = out.item()
         return out
 
-    returns_array = np.asanyarray(returns)
-
-    cumulative = np.empty(
-        (returns.shape[0] + 1,) + returns.shape[1:],
-        dtype="float64",
-    )
-    cumulative[0] = start = 100
-    cum_returns(returns_array, starting_value=start, out=cumulative[1:])
-
-    max_return = np.fmax.accumulate(cumulative, axis=0)
-
-    nanmin((cumulative - max_return) / max_return, axis=0, out=out)
+    nanmin(drawdown_series(returns), axis=0, out=out)
     if returns_1d:
         out = out.item()
     elif allocated_output and isinstance(returns, pd.DataFrame):
-        out = pd.Series(out)
+        out = pd.Series(out, index=returns.columns)
 
     return out
 
@@ -497,8 +485,9 @@ roll_annual_volatility = _create_unary_vectorized_roll_function(
 )
 
 
-def ulcer_index():
-    pass
+def ulcer_index(returns):
+    dd = drawdown_series(returns)
+    return np.power(np.divide(np.power(dd, 2).sum(), len(dd)), 0.5)
 
 
 def pain_index():
