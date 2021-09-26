@@ -35,6 +35,10 @@ def series_data():
         rand.uniform(-0.01, 0.01, 1000),
         index=pd.date_range("2000-1-30", periods=1000, freq="D", tz="UTC"),
     )
+    mixed_returns = pd.Series(
+        np.array([np.nan, 1.0, 10.0, -4.0, 2.0, 3.0, 2.0, 1.0, -10.0]) / 100,
+        index=pd.date_range("2000-1-30", periods=9, freq="D"),
+    )
 
     one = [
         -0.00171614,
@@ -200,11 +204,8 @@ def series_data():
             index=pd.date_range("2000-1-30", periods=9, freq="D"),
         ),
         # Positive and negative returns with max drawdown
-        "mixed_returns": pd.Series(
-            np.array([np.nan, 1.0, 10.0, -4.0, 2.0, 3.0, 2.0, 1.0, -10.0])
-            / 100,
-            index=pd.date_range("2000-1-30", periods=9, freq="D"),
-        ),
+        "mixed_returns": mixed_returns,
+        "neg_mixed_returns": -mixed_returns,
         # Flat line
         "flat_line_1": flat_line_1_tz,
         # Weekly returns
@@ -284,7 +285,6 @@ def returns(series_data, request):
     return series_data[name]
 
 
-@pytest.fixture
-def prices(series_data, request):
-    name = request.param
-    return series_data[name]
+benchmark = returns
+add_noise = returns
+prices = returns
