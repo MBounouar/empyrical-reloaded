@@ -1,4 +1,5 @@
 from copy import copy
+from empyrical.periods import YEARLY
 from operator import attrgetter
 
 import numpy as np
