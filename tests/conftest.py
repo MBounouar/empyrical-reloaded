@@ -21,7 +21,7 @@ def set_helpers(request):
 
 
 @pytest.fixture(scope="session")
-def series_data():
+def input_data():
     rand = np.random.RandomState(1337)
 
     noise = pd.Series(
@@ -35,6 +35,8 @@ def series_data():
         rand.uniform(-0.01, 0.01, 1000),
         index=pd.date_range("2000-1-30", periods=1000, freq="D", tz="UTC"),
     )
+
+    random_100k = pd.Series(rand.randn(100_000))
     mixed_returns = pd.Series(
         np.array([np.nan, 1.0, 10.0, -4.0, 2.0, 3.0, 2.0, 1.0, -10.0]) / 100,
         index=pd.date_range("2000-1-30", periods=9, freq="D"),
@@ -73,7 +75,7 @@ def series_data():
     )
 
     # Sparse flat line at 0.01
-    replace_nan = rand.choice(noise.index.tolist(), rand.randint(1, 10))
+    # replace_nan = rand.choice(noise.index.tolist(), rand.randint(1, 10))
     sparse_flat_line_1_tz = flat_line_1_tz.replace(replace_nan, np.nan)
 
     df_index_simple = pd.date_range("2000-1-30", periods=8, freq="D")
@@ -136,48 +138,6 @@ def series_data():
         np.nan,
     ]
 
-    expected_0_one = [
-        0.000000,
-        0.013221,
-        0.044264,
-        0.029414,
-        0.024372,
-        0.037371,
-        0.002539,
-        0.020555,
-    ]
-    expected_0_two = [
-        0.018462,
-        0.026548,
-        0.011680,
-        0.015955,
-        0.012504,
-        0.050542,
-        0.066461,
-        0.066461,
-    ]
-
-    expected_100_one = [
-        100.000000,
-        101.322056,
-        104.426424,
-        102.941421,
-        102.437235,
-        103.737087,
-        100.253895,
-        102.055494,
-    ]
-    expected_100_two = [
-        101.846232,
-        102.654841,
-        101.167994,
-        101.595466,
-        101.250436,
-        105.054226,
-        106.646123,
-        106.646123,
-    ]
-
     df_index = pd.date_range("2000-1-30", periods=8, freq="D")
 
     return {
@@ -223,6 +183,10 @@ def series_data():
             np.array([1.0]) / 100,
             index=pd.date_range("2000-1-30", periods=1, freq="D"),
         ),
+        "udu_returns": pd.Series(
+            np.array([10, -10, 10]) / 100,
+            index=pd.date_range("2000-1-30", periods=3, freq="D"),
+        ),
         # Empty series
         "empty_returns": pd.Series(
             np.array([]) / 100,
@@ -231,6 +195,7 @@ def series_data():
         # Random noise
         "noise": noise,
         "noise_uniform": noise_uniform,
+        "random_100k": random_100k,
         # Random noise inv
         "inv_noise": inv_noise,
         # Flat line
@@ -246,6 +211,10 @@ def series_data():
         "flat_line_1_tz": pd.Series(
             np.linspace(0.01, 0.01, num=1000),
             index=pd.date_range("2000-1-30", periods=1000, freq="D", tz="UTC"),
+        ),
+        "flat_line_yearly": pd.Series(
+            np.array([3.0, 3.0, 3.0]) / 100,
+            index=pd.date_range("2000-1-30", periods=3, freq="A"),
         ),
         # Positive line
         "pos_line": pd.Series(
@@ -280,11 +249,104 @@ def series_data():
 
 
 @pytest.fixture
-def returns(series_data, request):
+def returns(input_data, request):
     name = request.param
-    return series_data[name]
+    return input_data[name]
 
 
 benchmark = returns
+factor_returns = returns
 add_noise = returns
 prices = returns
+
+
+@pytest.fixture(scope="session")
+def expected_data():
+    expected_0_one = [
+        0.000000,
+        0.013221,
+        0.044264,
+        0.029414,
+        0.024372,
+        0.037371,
+        0.002539,
+        0.020555,
+    ]
+    expected_0_two = [
+        0.018462,
+        0.026548,
+        0.011680,
+        0.015955,
+        0.012504,
+        0.050542,
+        0.066461,
+        0.066461,
+    ]
+
+    expected_100_one = [
+        100.000000,
+        101.322056,
+        104.426424,
+        102.941421,
+        102.437235,
+        103.737087,
+        100.253895,
+        102.055494,
+    ]
+    expected_100_two = [
+        101.846232,
+        102.654841,
+        101.167994,
+        101.595466,
+        101.250436,
+        105.054226,
+        106.646123,
+        106.646123,
+    ]
+
+    mixed_returns_expected_gpd_risk_result = [
+        0.1,
+        0.10001255835838491,
+        1.5657360018514067e-06,
+        0.4912526273742347,
+        0.59126595492541179,
+    ]
+
+    negative_returns_expected_gpd_risk_result = [
+        0.05,
+        0.068353586736348199,
+        9.4304947982121171e-07,
+        0.34511639904932639,
+        0.41347032855617882,
+    ]
+
+    df_index = pd.date_range("2000-1-30", periods=8, freq="D")
+
+    df_0_expected = pd.DataFrame(
+        {
+            "one": pd.Series(expected_0_one, index=df_index),
+            "two": pd.Series(expected_0_two, index=df_index),
+        }
+    )
+
+    df_100_expected = pd.DataFrame(
+        {
+            "one": pd.Series(expected_100_one, index=df_index),
+            "two": pd.Series(expected_100_two, index=df_index),
+        }
+    )
+    return {
+        "df_empty": pd.DataFrame(),
+        "df_0_expected": df_0_expected,
+        "df_100_expected": df_100_expected,
+        "mixed_returns_expected_gpd_risk_result": mixed_returns_expected_gpd_risk_result,
+        "negative_returns_expected_gpd_risk_result": negative_returns_expected_gpd_risk_result,
+        "zeros_4": [0] * 4,
+        "zeros_5": [0] * 5,
+    }
+
+
+@pytest.fixture
+def expected(expected_data, request):
+    name = request.param
+    return expected_data[name]
