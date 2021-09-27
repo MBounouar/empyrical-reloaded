@@ -22,6 +22,11 @@ def set_helpers(request):
 
 @pytest.fixture(scope="session")
 def input_data():
+    simple_benchmark = pd.Series(
+        np.array([0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0]) / 100,
+        index=pd.date_range("2000-1-30", periods=9, freq="D"),
+    )
+
     rand = np.random.RandomState(1337)
 
     noise = pd.Series(
@@ -142,10 +147,10 @@ def input_data():
 
     return {
         # Simple benchmark, no drawdown
-        "simple_benchmark": pd.Series(
-            np.array([0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0]) / 100,
-            index=pd.date_range("2000-1-30", periods=9, freq="D"),
-        ),
+        "simple_benchmark": simple_benchmark,
+        "simple_benchmark_w_noise": simple_benchmark
+        + rand.normal(0, 0.001, len(simple_benchmark)),
+        "simple_benchmark_df": simple_benchmark.rename("returns").to_frame(),
         # All positive returns, small variance
         "positive_returns": pd.Series(
             np.array([1.0, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]) / 100,
@@ -165,7 +170,6 @@ def input_data():
         ),
         # Positive and negative returns with max drawdown
         "mixed_returns": mixed_returns,
-        "neg_mixed_returns": -mixed_returns,
         # Flat line
         "flat_line_1": flat_line_1_tz,
         # Weekly returns
@@ -251,10 +255,14 @@ def input_data():
 @pytest.fixture
 def returns(input_data, request):
     name = request.param
+    if name not in input_data.keys():
+        return eval(name, input_data)
     return input_data[name]
 
 
+required_return = returns
 benchmark = returns
+risk_free = returns
 factor_returns = returns
 add_noise = returns
 prices = returns
@@ -341,12 +349,12 @@ def expected_data():
         "df_100_expected": df_100_expected,
         "mixed_returns_expected_gpd_risk_result": mixed_returns_expected_gpd_risk_result,
         "negative_returns_expected_gpd_risk_result": negative_returns_expected_gpd_risk_result,
-        "zeros_4": [0] * 4,
-        "zeros_5": [0] * 5,
     }
 
 
 @pytest.fixture
 def expected(expected_data, request):
     name = request.param
+    if name not in expected_data.keys():
+        return eval(name)
     return expected_data[name]
