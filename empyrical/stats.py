@@ -36,13 +36,6 @@ from .utils import (
 from .periods import ANNUALIZATION_FACTORS, APPROX_BDAYS_PER_YEAR
 from .periods import DAILY, WEEKLY, MONTHLY, QUARTERLY, YEARLY
 
-# Placeholder TODO's
-# diversification ratio
-# information ratio  stability
-# excess return stability
-# Downside Beta
-# Upside Beta
-
 
 def annualization_factor(period, annualization):
     """
