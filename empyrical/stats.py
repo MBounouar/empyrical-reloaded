@@ -33,8 +33,8 @@ from .utils import (
     _aligned_series,
     _adjust_returns,
 )
-from .periods import ANNUALIZATION_FACTORS, APPROX_BDAYS_PER_YEAR
 from .periods import DAILY, WEEKLY, MONTHLY, QUARTERLY, YEARLY
+from .periods import AnnualizationFactor
 
 
 def annualization_factor(period, annualization):
@@ -64,12 +64,12 @@ def annualization_factor(period, annualization):
     """
     if annualization is None:
         try:
-            factor = ANNUALIZATION_FACTORS[period]
+            factor = AnnualizationFactor[period.upper()]
         except KeyError:
             raise ValueError(
                 "Period cannot be '{}'. "
                 "Can be '{}'.".format(
-                    period, "', '".join(ANNUALIZATION_FACTORS.keys())
+                    period, "', '".join(AnnualizationFactor.periods())
                 )
             )
     else:
@@ -478,13 +478,9 @@ roll_annual_volatility = _create_unary_vectorized_roll_function(
 )
 
 
-def ulcer_index(returns):
-    dd = drawdown_series(returns)
-    return np.power(np.divide(np.power(dd, 2).sum(), len(dd)), 0.5)
-
-
-def pain_index():
-    pass
+# def ulcer_index(returns):
+#     dd = drawdown_series(returns)
+#     return np.power(np.divide(np.power(dd, 2).sum(), len(dd)), 0.5)
 
 
 def calmar_ratio(returns, period=DAILY, annualization=None):
@@ -540,7 +536,8 @@ def omega_ratio(
     returns,
     risk_free=0.0,
     required_return=0.0,
-    annualization=APPROX_BDAYS_PER_YEAR,
+    annualization=AnnualizationFactor.DAILY,
+    # annualization=APPROX_BDAYS_PER_YEAR,
 ):
     """Determines the Omega ratio of a strategy.
 
