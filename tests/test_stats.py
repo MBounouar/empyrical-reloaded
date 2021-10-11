@@ -14,6 +14,7 @@ from empyrical.stats import (
     alpha_beta,
     up_alpha_beta,
     down_alpha_beta,
+    drawdown_series,
 )
 
 DECIMAL_PLACES = 8
@@ -171,6 +172,59 @@ class TestStats(BaseTestClass):
     def test_aggregate_returns(self, returns, convert_to, expected):
         returns = aggregate_returns(returns, convert_to).values.tolist()
         for i, v in enumerate(returns):
+            np.testing.assert_almost_equal(v, expected[i], DECIMAL_PLACES)
+
+    @pytest.mark.parametrize(
+        "returns, expected",
+        [
+            ("one_return", [0.0]),
+            ("simple_benchmark", [0.0]),
+            (
+                "mixed_returns",
+                [0.0, 0.0, 0.0, -0.04, -0.0208, 0.0, 0.0, 0.0, -0.1],
+            ),
+            ("positive_returns", [0.0]),
+            # negative returns means the drawdown is just the returns
+            (
+                "negative_returns",
+                [
+                    0.0,
+                    -0.06,
+                    -0.1258,
+                    -0.134542,
+                    -0.21243322,
+                    -0.22818456,
+                    -0.27449348,
+                    -0.332534,
+                    -0.3659073,
+                ],
+            ),
+            (
+                "all_negative_returns",
+                [
+                    -0.02,
+                    -0.0788,
+                    -0.143284,
+                    -0.15185116,
+                    -0.22818456,
+                    -0.24362086,
+                    -0.28900361,
+                    -0.34588332,
+                    -0.37858916,
+                ],
+            ),
+            (
+                "udu_returns",
+                [0.0, -0.10, -0.01],
+            ),
+        ],
+        indirect=["returns"],
+    )
+    def test_drawdown_series(self, returns, expected):
+        dd = drawdown_series(returns)
+        if len(expected) < len(returns):
+            expected = expected * len(returns)
+        for i, v in enumerate(dd):
             np.testing.assert_almost_equal(v, expected[i], DECIMAL_PLACES)
 
     @pytest.mark.parametrize(

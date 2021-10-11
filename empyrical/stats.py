@@ -17,7 +17,6 @@ import math
 from collections import OrderedDict
 import pandas as pd
 import numpy as np
-from math import pow
 from scipy import stats, optimize
 from sys import float_info
 
@@ -36,45 +35,42 @@ from .utils import (
 from .periods import DAILY, WEEKLY, MONTHLY, QUARTERLY, YEARLY
 from .periods import AnnualizationFactor
 
+# from __future__ import annotations
+# from typing import Optional
 
-def annualization_factor(period, annualization):
-    """
-    Return annualization factor from period entered or if a custom
-    value is passed in.
 
-    Parameters
-    ----------
-    period : str, optional
-        Defines the periodicity of the 'returns' data for purposes of
-        annualizing. Value ignored if `annualization` parameter is specified.
-        Defaults are::
+# def annualization_factor(
+#     period: Optional[str], annualization: Optional[int]
+# ) -> AnnualizationFactor:
+#     """
+#     Return annualization factor from period entered or if a custom
+#     value is passed in.
 
-            'monthly':12
-            'weekly': 52
-            'daily': 252
+#     Parameters
+#     ----------
+#     period : str, optional
+#         Defines the periodicity of the 'returns' data for purposes of
+#         annualizing. Value ignored if `annualization` parameter is specified.
+#         Defaults are::
 
-    annualization : int, optional
-        Used to suppress default values available in `period` to convert
-        returns into annual returns. Value should be the annual frequency of
-        `returns`.
+#             'monthly':12
+#             'weekly': 52
+#             'daily': 252
 
-    Returns
-    -------
-    annualization_factor : float
-    """
-    if annualization is None:
-        try:
-            factor = AnnualizationFactor[period.upper()]
-        except KeyError:
-            raise ValueError(
-                "Period cannot be '{}'. "
-                "Can be '{}'.".format(
-                    period, "', '".join(AnnualizationFactor.periods())
-                )
-            )
-    else:
-        factor = annualization
-    return factor
+#     annualization : int, optional
+#         Used to suppress default values available in `period` to convert
+#         returns into annual returns. Value should be the annual frequency of
+#         `returns`.
+
+#     Returns
+#     -------
+#     annualization_factor : float
+#     """
+#     if annualization is None:
+#         factor = AnnualizationFactor.from_period(period)
+#     else:
+#         factor = annualization
+#     return factor
 
 
 def simple_returns(prices):
@@ -340,7 +336,7 @@ def max_drawdown(returns, out=None):
 roll_max_drawdown = _create_unary_vectorized_roll_function(max_drawdown)
 
 
-def annual_return(returns, period=DAILY, annualization=None):
+def annual_return(returns, period=DAILY):
     """
     Determines the mean annual growth rate of returns. This is equivilent
     to the compound annual growth rate.
@@ -350,19 +346,14 @@ def annual_return(returns, period=DAILY, annualization=None):
     returns : pd.Series or np.ndarray
         Periodic returns of the strategy, noncumulative.
         - See full explanation in :func:`~empyrical.stats.cum_returns`.
-    period : str, optional
+    period : str or int
         Defines the periodicity of the 'returns' data for purposes of
-        annualizing. Value ignored if `annualization` parameter is specified.
+        annualizing.
         Defaults are::
 
             'monthly':12
             'weekly': 52
             'daily': 252
-
-    annualization : int, optional
-        Used to suppress default values available in `period` to convert
-        returns into annual returns. Value should be the annual frequency of
-        `returns`.
 
     Returns
     -------
@@ -374,7 +365,7 @@ def annual_return(returns, period=DAILY, annualization=None):
     if len(returns) < 1:
         return np.nan
 
-    ann_factor = annualization_factor(period, annualization)
+    ann_factor = AnnualizationFactor.from_period(period)
     num_years = len(returns) / ann_factor
     # Pass array to ensure index -1 looks up successfully.
     ending_value = cum_returns_final(returns, starting_value=1)
@@ -382,7 +373,7 @@ def annual_return(returns, period=DAILY, annualization=None):
     return ending_value ** (1 / num_years) - 1
 
 
-def cagr(returns, period=DAILY, annualization=None):
+def cagr(returns, period=DAILY):
     """
     Compute compound annual growth rate. Alias function for
     :func:`~empyrical.stats.annual_return`
@@ -392,20 +383,14 @@ def cagr(returns, period=DAILY, annualization=None):
     returns : pd.Series or np.ndarray
         Daily returns of the strategy, noncumulative.
         - See full explanation in :func:`~empyrical.stats.cum_returns`.
-    period : str, optional
+    period : str or int
         Defines the periodicity of the 'returns' data for purposes of
-        annualizing. Value ignored if `annualization` parameter is specified.
+        annualizing.
         Defaults are::
 
             'monthly':12
             'weekly': 52
             'daily': 252
-
-    annualization : int, optional
-        Used to suppress default values available in `period` to convert
-        returns into annual returns. Value should be the annual frequency of
-        `returns`.
-        - See full explanation in :func:`~empyrical.stats.annual_return`.
 
     Returns
     -------
@@ -413,15 +398,13 @@ def cagr(returns, period=DAILY, annualization=None):
         The CAGR value.
 
     """
-    return annual_return(returns, period, annualization)
+    return annual_return(returns, period)
 
 
 roll_cagr = _create_unary_vectorized_roll_function(cagr)
 
 
-def annual_volatility(
-    returns, period=DAILY, alpha=2.0, annualization=None, out=None
-):
+def annual_volatility(returns, period=DAILY, alpha=2.0, out=None):
     """
     Determines the annual volatility of a strategy.
 
@@ -430,9 +413,9 @@ def annual_volatility(
     returns : pd.Series or np.ndarray
         Periodic returns of the strategy, noncumulative.
         - See full explanation in :func:`~empyrical.stats.cum_returns`.
-    period : str, optional
+    period : str or int
         Defines the periodicity of the 'returns' data for purposes of
-        annualizing. Value ignored if `annualization` parameter is specified.
+        annualizing.
         Defaults are::
 
             'monthly':12
@@ -441,10 +424,7 @@ def annual_volatility(
 
     alpha : float, optional
         Scaling relation (Levy stability exponent).
-    annualization : int, optional
-        Used to suppress default values available in `period` to convert
-        returns into annual returns. Value should be the annual frequency of
-        `returns`.
+
     out : array-like, optional
         Array to use as output buffer.
         If not passed, a new array will be created.
@@ -465,7 +445,7 @@ def annual_volatility(
             out = out.item()
         return out
 
-    ann_factor = annualization_factor(period, annualization)
+    ann_factor = AnnualizationFactor.from_period(period)
     nanstd(returns, ddof=1, axis=0, out=out)
     out = np.multiply(out, ann_factor ** (1.0 / alpha), out=out)
     if returns_1d:
@@ -483,7 +463,7 @@ roll_annual_volatility = _create_unary_vectorized_roll_function(
 #     return np.power(np.divide(np.power(dd, 2).sum(), len(dd)), 0.5)
 
 
-def calmar_ratio(returns, period=DAILY, annualization=None):
+def calmar_ratio(returns, period=DAILY):
     """
     Determines the Calmar ratio, or drawdown ratio, of a strategy.
 
@@ -492,19 +472,18 @@ def calmar_ratio(returns, period=DAILY, annualization=None):
     returns : pd.Series or np.ndarray
         Daily returns of the strategy, noncumulative.
         - See full explanation in :func:`~empyrical.stats.cum_returns`.
-    period : str, optional
+    period : str, int
         Defines the periodicity of the 'returns' data for purposes of
-        annualizing. Value ignored if `annualization` parameter is specified.
+        annualizing.
         Defaults are::
 
             'monthly':12
             'weekly': 52
             'daily': 252
 
-    annualization : int, optional
-        Used to suppress default values available in `period` to convert
-        returns into annual returns. Value should be the annual frequency of
-        `returns`.
+        The int value should be the annual frequency of `returns`.
+
+
 
 
     Returns
@@ -520,9 +499,7 @@ def calmar_ratio(returns, period=DAILY, annualization=None):
 
     max_dd = max_drawdown(returns=returns)
     if max_dd < 0:
-        temp = annual_return(
-            returns=returns, period=period, annualization=annualization
-        ) / abs(max_dd)
+        temp = annual_return(returns=returns, period=period) / abs(max_dd)
     else:
         return np.nan
 
@@ -536,8 +513,7 @@ def omega_ratio(
     returns,
     risk_free=0.0,
     required_return=0.0,
-    annualization=AnnualizationFactor.DAILY,
-    # annualization=APPROX_BDAYS_PER_YEAR,
+    annualization=DAILY,
 ):
     """Determines the Omega ratio of a strategy.
 
@@ -554,9 +530,12 @@ def omega_ratio(
         value appropriate for the period of the returns. E.g. An annual minimum
         acceptable return of 100 will translate to a minimum acceptable
         return of 0.018.
-    annualization : int, optional
+    annualization : int or str
         Factor used to convert the required_return into a daily
         value. Enter 1 if no time period conversion is necessary.
+
+        default:
+            `daily`: 252
 
     Returns
     -------
@@ -589,9 +568,7 @@ def omega_ratio(
         return np.nan
 
 
-def sharpe_ratio(
-    returns, risk_free=0, period=DAILY, annualization=None, out=None
-):
+def sharpe_ratio(returns, risk_free=0, period=DAILY, out=None):
     """
     Determines the Sharpe ratio of a strategy.
 
@@ -602,19 +579,15 @@ def sharpe_ratio(
         - See full explanation in :func:`~empyrical.stats.cum_returns`.
     risk_free : int, float
         Constant daily risk-free return throughout the period.
-    period : str, optional
+    period : str or int
         Defines the periodicity of the 'returns' data for purposes of
-        annualizing. Value ignored if `annualization` parameter is specified.
+        annualizing.
         Defaults are::
 
             'monthly':12
             'weekly': 52
             'daily': 252
 
-    annualization : int, optional
-        Used to suppress default values available in `period` to convert
-        returns into annual returns. Value should be the annual frequency of
-        `returns`.
     out : array-like, optional
         Array to use as output buffer.
         If not passed, a new array will be created.
@@ -642,7 +615,7 @@ def sharpe_ratio(
         return out
 
     returns_risk_adj = np.asanyarray(_adjust_returns(returns, risk_free))
-    ann_factor = annualization_factor(period, annualization)
+    ann_factor = AnnualizationFactor.from_period(period)
 
     np.multiply(
         np.divide(
@@ -666,7 +639,6 @@ def sortino_ratio(
     returns,
     required_return=0,
     period=DAILY,
-    annualization=None,
     out=None,
     _downside_risk=None,
 ):
@@ -680,7 +652,7 @@ def sortino_ratio(
         - See full explanation in :func:`~empyrical.stats.cum_returns`.
     required_return: float / series
         minimum acceptable return
-    period : str, optional
+    period : str or int
         Defines the periodicity of the 'returns' data for purposes of
         annualizing. Value ignored if `annualization` parameter is specified.
         Defaults are::
@@ -689,10 +661,6 @@ def sortino_ratio(
             'weekly': 52
             'daily': 252
 
-    annualization : int, optional
-        Used to suppress default values available in `period` to convert
-        returns into annual returns. Value should be the annual frequency of
-        `returns`.
     _downside_risk : float, optional
         The downside risk of the given inputs, if known. Will be calculated if
         not provided.
@@ -728,13 +696,13 @@ def sortino_ratio(
 
     adj_returns = np.asanyarray(_adjust_returns(returns, required_return))
 
-    ann_factor = annualization_factor(period, annualization)
+    ann_factor = AnnualizationFactor.from_period(period)
 
     average_annual_return = nanmean(adj_returns, axis=0) * ann_factor
     annualized_downside_risk = (
         _downside_risk
         if _downside_risk is not None
-        else downside_risk(returns, required_return, period, annualization)
+        else downside_risk(returns, required_return, period)
     )
     np.divide(average_annual_return, annualized_downside_risk, out=out)
     if return_1d:
@@ -748,9 +716,7 @@ def sortino_ratio(
 roll_sortino_ratio = _create_unary_vectorized_roll_function(sortino_ratio)
 
 
-def downside_risk(
-    returns, required_return=0, period=DAILY, annualization=None, out=None
-):
+def downside_risk(returns, required_return=0, period=DAILY, out=None):
     """
     Determines the downside deviation below a threshold
 
@@ -761,7 +727,7 @@ def downside_risk(
         - See full explanation in :func:`~empyrical.stats.cum_returns`.
     required_return: float / series
         minimum acceptable return
-    period : str, optional
+    period : str or int
         Defines the periodicity of the 'returns' data for purposes of
         annualizing. Value ignored if `annualization` parameter is specified.
         Defaults are::
@@ -770,10 +736,6 @@ def downside_risk(
             'weekly': 52
             'daily': 252
 
-    annualization : int, optional
-        Used to suppress default values available in `period` to convert
-        returns into annual returns. Value should be the annual frequency of
-        `returns`.
     out : array-like, optional
         Array to use as output buffer.
         If not passed, a new array will be created.
@@ -803,7 +765,7 @@ def downside_risk(
             out = out.item()
         return out
 
-    ann_factor = annualization_factor(period, annualization)
+    ann_factor = AnnualizationFactor.from_period(period)
 
     downside_diff = np.clip(
         _adjust_returns(
@@ -886,7 +848,6 @@ def alpha_beta(
     factor_returns,
     risk_free=0.0,
     period=DAILY,
-    annualization=None,
     out=None,
 ):
     """Calculates annualized alpha and beta.
@@ -903,7 +864,7 @@ def alpha_beta(
     risk_free : int, float, optional
         Constant risk-free return throughout the period. For example, the
         interest rate on a three month us treasury bill.
-    period : str, optional
+    period : str or int
         Defines the periodicity of the 'returns' data for purposes of
         annualizing. Value ignored if `annualization` parameter is specified.
         Defaults are::
@@ -912,10 +873,6 @@ def alpha_beta(
             'weekly': 52
             'daily': 252
 
-    annualization : int, optional
-        Used to suppress default values available in `period` to convert
-        returns into annual returns. Value should be the annual frequency of
-        `returns`.
     out : array-like, optional
         Array to use as output buffer.
         If not passed, a new array will be created.
@@ -932,7 +889,6 @@ def alpha_beta(
         factor_returns,
         risk_free=risk_free,
         period=period,
-        annualization=annualization,
         out=out,
     )
 
@@ -967,7 +923,6 @@ def alpha_beta_aligned(
     factor_returns,
     risk_free=0.0,
     period=DAILY,
-    annualization=None,
     out=None,
 ):
     """Calculates annualized alpha and beta.
@@ -988,7 +943,7 @@ def alpha_beta_aligned(
     risk_free : int, float, optional
         Constant risk-free return throughout the period. For example, the
         interest rate on a three month us treasury bill.
-    period : str, optional
+    period : str or int
         Defines the periodicity of the 'returns' data for purposes of
         annualizing. Value ignored if `annualization` parameter is specified.
         Defaults are::
@@ -997,10 +952,6 @@ def alpha_beta_aligned(
             'weekly': 52
             'daily': 252
 
-    annualization : int, optional
-        Used to suppress default values available in `period` to convert
-        returns into annual returns. Value should be the annual frequency of
-        `returns`.
     out : array-like, optional
         Array to use as output buffer.
         If not passed, a new array will be created.
@@ -1019,7 +970,6 @@ def alpha_beta_aligned(
         factor_returns,
         risk_free,
         period,
-        annualization,
         out=out[..., 0],
         _beta=b,
     )
@@ -1037,7 +987,6 @@ def alpha(
     factor_returns,
     risk_free=0.0,
     period=DAILY,
-    annualization=None,
     out=None,
     _beta=None,
 ):
@@ -1055,7 +1004,7 @@ def alpha(
     risk_free : int, float, optional
         Constant risk-free return throughout the period. For example, the
         interest rate on a three month us treasury bill.
-    period : str, optional
+    period : str or int
         Defines the periodicity of the 'returns' data for purposes of
         annualizing. Value ignored if `annualization` parameter is specified.
         Defaults are::
@@ -1064,11 +1013,6 @@ def alpha(
             'weekly': 52
             'daily': 252
 
-    annualization : int, optional
-        Used to suppress default values available in `period` to convert
-        returns into annual returns. Value should be the annual frequency of
-        `returns`.
-        - See full explanation in :func:`~empyrical.stats.annual_return`.
     _beta : float, optional
         The beta for the given inputs, if already known. Will be calculated
         internally if not provided.
@@ -1092,7 +1036,6 @@ def alpha(
         factor_returns,
         risk_free=risk_free,
         period=period,
-        annualization=annualization,
         out=out,
         _beta=_beta,
     )
@@ -1106,7 +1049,6 @@ def alpha_aligned(
     factor_returns,
     risk_free=0.0,
     period=DAILY,
-    annualization=None,
     out=None,
     _beta=None,
 ):
@@ -1128,7 +1070,7 @@ def alpha_aligned(
     risk_free : int, float, optional
         Constant risk-free return throughout the period. For example, the
         interest rate on a three month us treasury bill.
-    period : str, optional
+    period : str or int
         Defines the periodicity of the 'returns' data for purposes of
         annualizing. Value ignored if `annualization` parameter is specified.
         Defaults are::
@@ -1137,11 +1079,6 @@ def alpha_aligned(
             'weekly': 52
             'daily': 252
 
-    annualization : int, optional
-        Used to suppress default values available in `period` to convert
-        returns into annual returns. Value should be the annual frequency of
-        `returns`.
-        - See full explanation in :func:`~empyrical.stats.annual_return`.
     _beta : float, optional
         The beta for the given inputs, if already known. Will be calculated
         internally if not provided.
@@ -1163,7 +1100,7 @@ def alpha_aligned(
             out = out.item()
         return out
 
-    ann_factor = annualization_factor(period, annualization)
+    ann_factor = AnnualizationFactor.from_period(period)
 
     if _beta is None:
         _beta = beta_aligned(returns, factor_returns, risk_free)
@@ -1427,7 +1364,7 @@ def capture(returns, factor_returns, period=DAILY):
         Noncumulative returns of the factor to which beta is
         computed. Usually a benchmark such as the market.
         - This is in the same style as returns.
-    period : str, optional
+    period : str or int
         Defines the periodicity of the 'returns' data for purposes of
         annualizing. Value ignored if `annualization` parameter is specified.
         Defaults are::
@@ -1713,7 +1650,7 @@ def gpd_var_calculator(
         param_ratio = scale_param / shape_param
         prob_ratio = (total_n / exceedance_n) * probability
         result = threshold + (
-            param_ratio * (pow(prob_ratio, -shape_param) - 1)
+            param_ratio * (math.pow(prob_ratio, -shape_param) - 1)
         )
     return result
 
@@ -1800,14 +1737,6 @@ def up_capture(returns, factor_returns, **kwargs):
         Noncumulative returns of the factor to which beta is
         computed. Usually a benchmark such as the market.
         - This is in the same style as returns.
-    period : str, optional
-        Defines the periodicity of the 'returns' data for purposes of
-        annualizing. Value ignored if `annualization` parameter is specified.
-        Defaults are::
-
-            'monthly':12
-            'weekly': 52
-            'daily': 252
 
     Returns
     -------
@@ -1834,14 +1763,6 @@ def down_capture(returns, factor_returns, **kwargs):
         Noncumulative returns of the factor to which beta is
         computed. Usually a benchmark such as the market.
         - This is in the same style as returns.
-    period : str, optional
-        Defines the periodicity of the 'returns' data for purposes of
-        annualizing. Value ignored if `annualization` parameter is specified.
-        Defaults are::
-
-            'monthly':12
-            'weekly': 52
-            'daily': 252
 
     Returns
     -------
