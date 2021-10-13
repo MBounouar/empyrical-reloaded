@@ -2,13 +2,12 @@ from enum import IntEnum
 
 APPROX_BDAYS_PER_MONTH = 21
 APPROX_BDAYS_PER_YEAR = 252
-
 MONTHS_PER_YEAR = 12
 WEEKS_PER_YEAR = 52
 QTRS_PER_YEAR = 4
 
 
-class AnnualizationFactor(IntEnum):
+class AnnualizationFactor(IntEnum):  # pragma: no cover
     DAILY = APPROX_BDAYS_PER_YEAR
     WEEKLY = WEEKS_PER_YEAR
     MONTHLY = MONTHS_PER_YEAR

@@ -1808,7 +1808,30 @@ def up_down_capture(returns, factor_returns, **kwargs):
     )
 
 
-def batting_average(returns, factor_returns, **kwargs):
+def batting_average(returns, factor_returns):
+    """
+    Computes the batting average.
+
+    Parameters
+    ----------
+    returns : pd.Series or np.ndarray
+        Returns of the strategy, noncumulative.
+        - See full explanation in :func:`~empyrical.stats.cum_returns`.
+    factor_returns : pd.Series or np.ndarray
+        Noncumulative returns of the factor to which beta is
+        computed. Usually a benchmark such as the market.
+        - This is in the same style as returns.
+
+    Returns
+    -------
+    batting_average : pd.Series
+        batting average, up market, down market
+
+    Note
+    ----
+    See https://www.investopedia.com/terms/b/batting-average.asp for
+    more information.
+    """
     results = OrderedDict(
         {
             "batting average": np.nan,
