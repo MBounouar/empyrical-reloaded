@@ -1841,8 +1841,8 @@ def batting_average(returns, factor_returns):
     )
     active_return = _adjust_returns(returns, factor_returns)
     bt = active_return > 0
-    up = active_return[factor_returns >= 0.0]
-    down = active_return[factor_returns < 0.0]
+    up = active_return[factor_returns >= 0.0] > 0
+    down = active_return[factor_returns < 0.0] > 0
     if len(bt) > 0:
         results["batting average"] = bt.mean()
     if len(up) > 0:
