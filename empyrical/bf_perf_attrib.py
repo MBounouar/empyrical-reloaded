@@ -1,4 +1,5 @@
 import pandas as pd
+from collections import OrderedDict
 from typing import Optional
 
 
@@ -13,10 +14,16 @@ def brinson_fachler_perf_attrib(
     smoothing: bool = True,
 ) -> pd.DataFrame:
     """
-    Brinson and Fachler type attribution is done here:
+    Brinson and Fachler type attribution.
+
+    Interaction is included with selection.
+    For Arithmetic:
     allocation = (pf_wi - bmk_wi) * (Rbmk_i - Rbmk)
-    Interaction is included with selection:
     selection = pf_wi * (Rpf_i - Rbmk_i)
+
+    For Geometric:
+    allocation = (pf_wi - bmk_wi) * (1 + Rbmk_i)/(1 + Rbmk) - 1
+    selection = pf_wi * ((1 + Rpf_i)/(1 + Rbmk_i) - 1) * (1 + Rbmk_i)/(1 + Rs)
 
     if geometric is set to True smoothing algorithm is ignored
 
@@ -32,7 +39,7 @@ def brinson_fachler_perf_attrib(
     if bm_returns is None:
         bm_returns = (bm_pos_weights * bm_pos_returns).groupby(level=0).sum()
 
-    attr_df = {}
+    attr_df = OrderedDict()
 
     if geometric:
         active_pos_returns = ((1 + pf_pos_returns) / (1 + bm_pos_returns)) - 1
@@ -42,7 +49,7 @@ def brinson_fachler_perf_attrib(
         attr_df["allocation"] = active_pos_weights * (
             (1 + bm_pos_returns).div(1 + bm_returns, level=0) - 1.0
         )
-        # adjusted geomtric selection see: page 206
+        # adjusted geometric selection see: page 206
         attr_df["selection"] = (
             pf_pos_weights
             * active_pos_returns
@@ -85,6 +92,89 @@ def frongello_smoothing(
         ).values
 
     return performance_attr
+
+
+def mlvl_brinson_fachler_perf_attrib(
+    pf_pos_returns: pd.Series,
+    pf_pos_weights: pd.Series,
+    bm_pos_returns: pd.Series,
+    bm_pos_weights: pd.Series,
+) -> pd.DataFrame:
+    """
+    Brinson and Fachler multilevel type attribution.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    multilevel brinson_fachler_perf_attrib:
+    """
+    nlvls = len(pf_pos_returns.index.levshape)
+    mlvls = [list(range(x)) for x in range(2, nlvls + 1)]
+
+    lvl_names = pf_pos_returns.index.names
+    if len(set(lvl_names)) < nlvls:
+        lvl_names = ["date"] + [f"lvl{x}" for x in range(1, nlvls)]
+
+    bm_returns = (bm_pos_weights * bm_pos_returns).groupby(level=0).sum()
+
+    attr_df = []
+    s_adj = [1]
+    bm_lvl_rets = [bm_returns]
+
+    for i, mlvl in enumerate(mlvls):
+        pf_pos_lvl_weights = pf_pos_weights.groupby(
+            level=mlvl, sort=False
+        ).sum()
+
+        bm_pos_lvl_weights = bm_pos_weights.groupby(
+            level=mlvl, sort=False
+        ).sum()
+
+        bm_lvl_ret = (bm_pos_weights * bm_pos_returns).groupby(
+            level=mlvl, sort=False
+        ).sum() / bm_pos_lvl_weights
+
+        bm_lvl_rets.append(bm_lvl_ret)
+        active_lvl_weights = pf_pos_lvl_weights - bm_pos_lvl_weights
+
+        allocation = (
+            (
+                active_lvl_weights
+                * ((1 + bm_lvl_ret) / (1 + bm_lvl_rets[i]) - 1.0)
+                * s_adj[i]
+            )
+            .rename(f"Allocation {lvl_names[i+1]}")
+            .to_frame()
+        )
+
+        if len(allocation.index.names) < nlvls:
+            mkeys = lvl_names[len(allocation.index.names) :]
+            allocation = allocation.assign(**{x: "" for x in mkeys}).set_index(
+                mkeys, append=True
+            )
+
+        attr_df.append(allocation)
+
+        s_notional_return = sum(pf_pos_lvl_weights * bm_lvl_ret)
+        s_adj.append((1 + bm_lvl_ret) / (1 + s_notional_return))
+
+    # adjusted geometric selection see: page 206
+    selection = (
+        (
+            pf_pos_weights
+            * ((1 + pf_pos_returns) / (1 + bm_pos_returns) - 1)
+            * (1 + bm_pos_returns)
+            / (1 + s_notional_return)
+        )
+        .rename("Selection")
+        .to_frame()
+    )
+    attr_df.append(selection)
+
+    attr_df = pd.concat(attr_df, axis=1)
+    return attr_df
 
 
 if __name__ == "__main__":
