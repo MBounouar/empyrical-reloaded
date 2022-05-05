@@ -1,9 +1,10 @@
 import numpy as np
-
 from scipy import interpolate
 
 
-def expected_max_drawdown(mu, sigma, t, gbm=False):
+def expected_max_drawdown(
+    mu: float, sigma: float, t: float, gbm: bool = False
+) -> float:
     """
     Determines the expected maximum drawdown of a brownian motion,
     given drift and diffusion
@@ -12,6 +13,7 @@ def expected_max_drawdown(mu, sigma, t, gbm=False):
     it converts to the form here by Ito's Lemma with X(t) = log(S(t)) such that
         Mu = Mu0 - 0.5 * Sigma0^2
         Sigma = Sigma0 .
+
     Parameters
     ----------
     mu : float
@@ -22,9 +24,11 @@ def expected_max_drawdown(mu, sigma, t, gbm=False):
         A time period of interest
     gbp : bool
         If true, compute for geometric brownian motion
+
     Returns
     -------
     expected_max_drawdown : float
+
     Note
     -----
     See http://www.cs.rpi.edu/~magdon/ps/journal/drawdown_journal.pdf
@@ -35,11 +39,13 @@ def expected_max_drawdown(mu, sigma, t, gbm=False):
     if gbm:
         mu = mu - 0.5 * sigma2
 
-    def emdd_q(x, p=True):
+    def emdd_q(x: float, p: bool = True):
         """Q function based on lookup table"""
+
         if x < 0.0005:
             return 0.5 * np.sqrt(np.pi * x)
-        elif x > 5000:
+
+        if x > 5000:
             return 0.25 * np.log(x) + 0.4908
 
         if p:
@@ -337,16 +343,24 @@ def expected_max_drawdown(mu, sigma, t, gbm=False):
 
     if (not np.isfinite(mu)) | (not np.isfinite(sigma)) | (sigma <= 0):
         return np.nan
-    else:
-        if mu == 0:
-            return np.sqrt(np.pi / 2) * sigma * np.sqrt(t)
-        else:
-            alpha = (2 * sigma2) / mu
-            x = (np.power(mu, 2) * t) / (2 * sigma2)
-            Q = emdd_q(x, p=True if mu > 0 else False)
-            return np.sign(mu) * alpha * Q
+
+    if mu == 0:
+        return np.sqrt(np.pi / 2) * sigma * np.sqrt(t)
+
+    alpha = (2 * sigma2) / mu
+    x = (np.power(mu, 2) * t) / (2 * sigma2)
+    Q = emdd_q(x, p=True if mu > 0 else False)
+    return np.sign(mu) * alpha * Q
 
 
 if __name__ == "__main__":
 
-    print(expected_max_drawdown(mu=0, sigma=1, t=1000, gbm=False))
+    print(expected_max_drawdown(mu=0, sigma=1, t=1000, gbm=True))
+    # print(
+    #     expected_max_drawdown(
+    #         mu=np.array([0]),
+    #         sigma=np.array([1]),
+    #         t=1000,
+    #         gbm=False,
+    #     )
+    # )

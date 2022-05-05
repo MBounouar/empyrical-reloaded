@@ -29,11 +29,35 @@ def brinson_fachler_perf_attrib(
 
     Parameters
     ----------
+    pf_pos_returns: pd.Series
+        portfolio position returns
+    pf_pos_weights: pd.Series
+        portfolio position weights
+    bm_pos_returns: pd.Series
+        benchmark position returns
+    bm_pos_weights: pd.Series
+        benchmark weights, optional
+    pf_returns: Optional[pd.Series]
+        Total portfolio returns, this is optional
+    bm_returns: Optional[pd.Series]
+        Total benchmark returns, this is optional
+    geometric: bool
+        Use geometric allocation
+    smoothing: bool
+        use Frongello smoothing algorithm
 
     Returns
     -------
-    brinson_fachler_perf_attrib:
+    Brinson Fachler performance attribution: pd.DataFrame
+
+    Notes
+    -----
+    Practical Portfolio Performance Measurement and Attribution.
+    Brison and Fachler results p.126-129
+    p.201 (Frongello)
+    p.215 for multi level attribution
     """
+
     active_pos_weights = pf_pos_weights - bm_pos_weights
 
     if bm_returns is None:
@@ -108,6 +132,7 @@ def mlvl_brinson_fachler_perf_attrib(
 
     Returns
     -------
+
     multilevel brinson_fachler_perf_attrib:
     """
     nlvls = len(pf_pos_returns.index.levshape)
