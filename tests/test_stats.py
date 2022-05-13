@@ -227,6 +227,9 @@ class TestStats(BaseTestClass):
     @pytest.mark.parametrize(
         "mu, sigma, t, expected",
         [
+            # The data for the 4 lines below is taken from:
+            # https://www.risk.net/risk-management/market-risk/1530272/maximum-drawdown
+            # Table "B.MDD-related statistics ..."
             (0.1004, 0.1548, 24.25, 0.4456),
             (0.0701, 0.1666, 19.83, 0.5554),
             (0.1120, 0.2438, 19.42, 0.7787),

@@ -2112,7 +2112,7 @@ def expected_max_drawdown(
     sigma : float
         The diffusion term of a Brownian motion with drift.
     t : float
-        A time period of interest in years
+        Time period of interest in years
 
     Returns
     -------
